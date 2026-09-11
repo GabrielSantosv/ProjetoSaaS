@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #ffffff; color: #1e293b; -webkit-font-smoothing: antialiased; }
+  a { color: #2563eb; text-decoration: none; }
+  a:hover { color: #1d4ed8; }
+  input, button { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  input:focus { outline: none; }
+  ::selection { background: #dbeafe; }
+</style>
+</helmet>
+
+<div style="min-height: 100vh; background: #ffffff; display: flex; flex-direction: column">
+
+  <header style="position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,0.94); backdrop-filter: blur(12px); padding: 26px clamp(24px, 5vw, 72px); display: flex; align-items: center; justify-content: space-between; gap: 24px">
+    <button onClick="{{ goHome }}" style="border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; gap: 2px; text-align: left">
+      <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 24px; letter-spacing: -0.02em; color: #1e293b">Aurora</span>
+      <span style="font-size: 9.5px; letter-spacing: 0.24em; text-transform: uppercase; color: #94a3b8">Mercearia</span>
+    </button>
+    <button onClick="{{ goCart }}" style="position: relative; border: 0; background: transparent; display: flex; align-items: center; gap: 10px; padding: 8px">
+      <span style="font-size: 13px; color: #64748b">Carrinho</span>
+      <span style="position: relative; width: 34px; height: 34px; border-radius: 999px; background: #eff6ff; display: flex; align-items: center; justify-content: center">
+        <span style="width: 13px; height: 11px; border: 1.6px solid {{ accent }}; border-radius: 2px 2px 5px 5px"></span>
+        <span style="position: absolute; top: -4px; right: -4px; min-width: 19px; height: 19px; border-radius: 999px; background: {{ accent }}; color: #ffffff; font-size: 10.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; padding: 0 5px">{{ cartCount }}</span>
+      </span>
+    </button>
+  </header>
+
+  <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+    <div style="display: flex; flex-direction: column">
+
+      <section style="padding: clamp(40px, 7vw, 90px) clamp(24px, 5vw, 72px) clamp(32px, 4vw, 56px) clamp(24px, 5vw, 72px); display: flex; flex-direction: column; gap: 26px; max-width: 900px">
+        <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(44px, 7vw, 82px); line-height: 1.02; letter-spacing: -0.035em; color: #1e293b; text-wrap: pretty">A cozinha da Aurora, agora na sua casa.</h1>
+        <p style="margin: 0; font-size: clamp(15px, 1.4vw, 18px); line-height: 1.7; color: #64748b; max-width: 560px; text-wrap: pretty">Pratos, massas frescas e vinhos selecionados pelo mesmo time que atende o salão. Entregamos na cidade inteira, todos os dias.</p>
+      </section>
+
+      <div style="padding: 0 clamp(24px, 5vw, 72px); display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 26px; border-bottom: 1px solid #f1f5f9; padding-bottom: 22px">
+        <nav style="display: flex; flex-wrap: wrap; gap: clamp(18px, 2.4vw, 34px)">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+            <button onClick="{{ c.select }}" style="border: 0; background: transparent; padding: 4px 0 6px 0; font-size: 14.5px; font-weight: {{ c.weight }}; color: {{ c.fg }}; border-bottom: 2px solid {{ c.underline }}" style-hover="color: #1e293b">{{ c.label }}</button>
+          </sc-for>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e2e8f0; padding: 0 2px 7px 2px; min-width: 220px">
+          <span style="width: 11px; height: 11px; border: 1.6px solid #cbd5e1; border-radius: 50%; flex: none"></span>
+          <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Buscar na loja" style="border: 0; background: transparent; flex: 1; min-width: 0; font-size: 14px; color: #334155" />
+        </div>
+      </div>
+
+      <section style="padding: clamp(40px, 5vw, 72px) clamp(24px, 5vw, 72px) clamp(60px, 8vw, 110px) clamp(24px, 5vw, 72px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: clamp(40px, 5vw, 72px) clamp(28px, 3.5vw, 56px)">
+        <sc-for list="{{ products }}" as="pr" hint-placeholder-count="6">
+          <article style="display: flex; flex-direction: column; gap: 22px; min-width: 0">
+            <button onClick="{{ pr.open }}" style="border: 0; background: transparent; padding: 0; display: block; width: 100%">
+              <div style="position: relative; width: 100%; aspect-ratio: 4 / 5; background: #f8fafc; overflow: hidden">
+                <image-slot id="{{ pr.slotId }}" shape="rect" fit="cover" placeholder="{{ pr.slotHint }}"></image-slot>
+              </div>
+            </button>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">{{ pr.cat }}</div>
+              <button onClick="{{ pr.open }}" style="border: 0; background: transparent; padding: 0; text-align: left">
+                <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(24px, 2.3vw, 30px); line-height: 1.15; letter-spacing: -0.025em; color: #1e293b; text-wrap: pretty">{{ pr.name }}</h2>
+              </button>
+              <p style="margin: 0; font-size: 13.5px; line-height: 1.65; color: #94a3b8; text-wrap: pretty">{{ pr.short }}</p>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-top: 6px">
+                <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 26px; letter-spacing: -0.02em; color: #1e293b; font-variant-numeric: tabular-nums">{{ pr.price }}</span>
+                <button onClick="{{ pr.add }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 14px 26px; font-size: 13.5px; font-weight: 500; box-shadow: 0 14px 30px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Adicionar ao carrinho</button>
+              </div>
+            </div>
+          </article>
+        </sc-for>
+      </section>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 0 clamp(24px, 5vw, 72px) 110px clamp(24px, 5vw, 72px); display: flex; flex-direction: column; gap: 10px; max-width: 520px">
+          <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: 32px; letter-spacing: -0.025em; color: #1e293b">Nada por aqui.</h2>
+          <p style="margin: 0; font-size: 14.5px; line-height: 1.7; color: #94a3b8">Tente outra palavra ou volte para todas as categorias.</p>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-direction: column">
+      <div style="padding: 22px clamp(24px, 5vw, 72px) 0 clamp(24px, 5vw, 72px)">
+        <button onClick="{{ goHome }}" style="border: 0; background: transparent; padding: 0; font-size: 13px; color: #94a3b8" style-hover="color: #1e293b">← Voltar à loja</button>
+      </div>
+
+      <section style="padding: clamp(28px, 4vw, 52px) clamp(24px, 5vw, 72px) clamp(60px, 8vw, 100px) clamp(24px, 5vw, 72px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: clamp(36px, 5vw, 80px); align-items: start">
+
+        <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+          <div style="position: relative; width: 100%; aspect-ratio: 4 / 5; background: #f8fafc; overflow: hidden">
+            <image-slot id="{{ detail.slotId }}" shape="rect" fit="cover" placeholder="{{ detail.slotHint }}"></image-slot>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px">
+            <sc-for list="{{ detail.thumbs }}" as="t" hint-placeholder-count="3">
+              <div style="position: relative; width: 100%; aspect-ratio: 1 / 1; background: #f8fafc; overflow: hidden">
+                <image-slot id="{{ t.id }}" shape="rect" fit="cover" placeholder="{{ t.hint }}"></image-slot>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 28px; min-width: 0; padding-top: clamp(0px, 1vw, 18px)">
+          <div style="display: flex; flex-direction: column; gap: 18px">
+            <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">{{ detail.cat }}</div>
+            <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(38px, 4.6vw, 60px); line-height: 1.05; letter-spacing: -0.032em; color: #1e293b; text-wrap: pretty">{{ detail.name }}</h1>
+            <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: clamp(30px, 3vw, 40px); letter-spacing: -0.025em; color: #1e293b; font-variant-numeric: tabular-nums">{{ detail.price }}</span>
+          </div>
+
+          <p style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(17px, 1.7vw, 21px); line-height: 1.6; color: #475569; text-wrap: pretty">{{ detail.long }}</p>
+
+          <div style="display: flex; flex-direction: column; gap: 16px; border-top: 1px solid #f1f5f9; padding-top: 26px">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 18px">
+              <div style="display: flex; align-items: center; gap: 4px; border: 1px solid #e2e8f0; border-radius: 999px; padding: 5px">
+                <button onClick="{{ dec }}" style="border: 0; background: transparent; width: 42px; height: 42px; border-radius: 999px; font-size: 18px; color: {{ decFg }}" style-hover="background: #f8fafc">−</button>
+                <span style="min-width: 34px; text-align: center; font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 18px; color: #1e293b; font-variant-numeric: tabular-nums">{{ qty }}</span>
+                <button onClick="{{ inc }}" style="border: 0; background: transparent; width: 42px; height: 42px; border-radius: 999px; font-size: 18px; color: #334155" style-hover="background: #f8fafc">+</button>
+              </div>
+              <span style="font-size: 13px; color: #94a3b8">{{ detail.stockNote }}</span>
+            </div>
+            <button onClick="{{ addDetail }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 20px 32px; font-size: 15.5px; font-weight: 500; box-shadow: 0 18px 36px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Adicionar ao carrinho · {{ lineTotal }}</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 14px; border-top: 1px solid #f1f5f9; padding-top: 26px">
+            <sc-for list="{{ detail.specs }}" as="sp" hint-placeholder-count="4">
+              <div style="display: flex; justify-content: space-between; gap: 20px; font-size: 13.5px">
+                <span style="color: #94a3b8">{{ sp.k }}</span>
+                <span style="color: #334155; text-align: right">{{ sp.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+
+      <section style="padding: 0 clamp(24px, 5vw, 72px) clamp(70px, 9vw, 120px) clamp(24px, 5vw, 72px); display: flex; flex-direction: column; gap: clamp(32px, 4vw, 52px)">
+        <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(28px, 3vw, 40px); letter-spacing: -0.028em; color: #1e293b">Combina com</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: clamp(28px, 3.5vw, 52px)">
+          <sc-for list="{{ related }}" as="rp" hint-placeholder-count="3">
+            <article style="display: flex; flex-direction: column; gap: 16px; min-width: 0">
+              <button onClick="{{ rp.open }}" style="border: 0; background: transparent; padding: 0; display: block; width: 100%">
+                <div style="position: relative; width: 100%; aspect-ratio: 1 / 1; background: #f8fafc; overflow: hidden">
+                  <image-slot id="{{ rp.slotId }}" shape="rect" fit="cover" placeholder="{{ rp.slotHint }}"></image-slot>
+                </div>
+              </button>
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <h3 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: 21px; line-height: 1.2; letter-spacing: -0.02em; color: #1e293b">{{ rp.name }}</h3>
+                <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 18px; color: #475569; font-variant-numeric: tabular-nums">{{ rp.price }}</span>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCart }}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-direction: column">
+      <div style="padding: 22px clamp(24px, 5vw, 72px) 0 clamp(24px, 5vw, 72px)">
+        <button onClick="{{ goHome }}" style="border: 0; background: transparent; padding: 0; font-size: 13px; color: #94a3b8" style-hover="color: #1e293b">← Continuar comprando</button>
+      </div>
+
+      <section style="padding: clamp(30px, 4vw, 54px) clamp(24px, 5vw, 72px) clamp(20px, 3vw, 36px) clamp(24px, 5vw, 72px); display: flex; flex-direction: column; gap: 16px; max-width: 760px">
+        <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(40px, 5.6vw, 66px); line-height: 1.04; letter-spacing: -0.032em; color: #1e293b">Seu carrinho</h1>
+        <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #64748b">{{ cartLead }}</p>
+      </section>
+
+      <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 0 clamp(24px, 5vw, 72px) clamp(70px, 9vw, 110px) clamp(24px, 5vw, 72px)">
+          <button onClick="{{ goHome }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 18px 30px; font-size: 15px; font-weight: 500; box-shadow: 0 18px 36px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Ver a loja</button>
+        </div>
+      </sc-if>
+
+      <section style="padding: 0 clamp(24px, 5vw, 72px) clamp(70px, 9vw, 110px) clamp(24px, 5vw, 72px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: clamp(36px, 5vw, 72px); align-items: start">
+
+        <div style="display: flex; flex-direction: column; min-width: 0">
+          <sc-for list="{{ cartLines }}" as="l" hint-placeholder-count="2">
+            <div style="display: flex; gap: clamp(16px, 2vw, 26px); padding: 26px 0; border-top: 1px solid #f1f5f9; align-items: flex-start">
+              <button onClick="{{ l.open }}" style="border: 0; background: transparent; padding: 0; width: clamp(92px, 11vw, 132px); flex: none">
+                <div style="position: relative; width: 100%; aspect-ratio: 4 / 5; background: #f8fafc; overflow: hidden">
+                  <image-slot id="{{ l.slotId }}" shape="rect" fit="cover" placeholder="{{ l.slotHint }}"></image-slot>
+                </div>
+              </button>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+                <div style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">{{ l.cat }}</div>
+                <button onClick="{{ l.open }}" style="border: 0; background: transparent; padding: 0; text-align: left">
+                  <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(20px, 2vw, 26px); line-height: 1.18; letter-spacing: -0.022em; color: #1e293b; text-wrap: pretty">{{ l.name }}</h2>
+                </button>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-top: 4px">
+                  <div style="display: flex; align-items: center; gap: 3px; border: 1px solid #e2e8f0; border-radius: 999px; padding: 4px">
+                    <button onClick="{{ l.dec }}" style="border: 0; background: transparent; width: 36px; height: 36px; border-radius: 999px; font-size: 16px; color: #334155" style-hover="background: #f8fafc">−</button>
+                    <span style="min-width: 28px; text-align: center; font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 16px; color: #1e293b; font-variant-numeric: tabular-nums">{{ l.qty }}</span>
+                    <button onClick="{{ l.inc }}" style="border: 0; background: transparent; width: 36px; height: 36px; border-radius: 999px; font-size: 16px; color: #334155" style-hover="background: #f8fafc">+</button>
+                  </div>
+                  <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 22px; letter-spacing: -0.02em; color: #1e293b; font-variant-numeric: tabular-nums">{{ l.total }}</span>
+                </div>
+                <button onClick="{{ l.remove }}" style="align-self: flex-start; border: 0; background: transparent; padding: 0; font-size: 12.5px; color: #94a3b8" style-hover="color: #b91c1c">Remover</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 22px; min-width: 0; border-top: 1px solid #f1f5f9; padding-top: 26px">
+          <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: 28px; letter-spacing: -0.025em; color: #1e293b">Resumo</h2>
+          <div style="display: flex; flex-direction: column; gap: 13px">
+            <sc-for list="{{ summary }}" as="sm" hint-placeholder-count="3">
+              <div style="display: flex; justify-content: space-between; gap: 18px; font-size: 14px">
+                <span style="color: #94a3b8">{{ sm.k }}</span>
+                <span style="color: #334155; font-variant-numeric: tabular-nums">{{ sm.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 18px; border-top: 1px solid #f1f5f9; padding-top: 20px">
+            <span style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Total</span>
+            <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: clamp(30px, 3vw, 38px); letter-spacing: -0.025em; color: #1e293b; font-variant-numeric: tabular-nums">{{ grandTotal }}</span>
+          </div>
+          <button onClick="{{ goCheckout }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 20px 30px; font-size: 15.5px; font-weight: 500; box-shadow: 0 18px 36px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Finalizar compra</button>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.65; color: #94a3b8; text-wrap: pretty">Frete grátis acima de R$ 250. Entregamos de terça a domingo, das 11h às 22h.</p>
+        </div>
+        </sc-if>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCheckout }}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-direction: column">
+      <div style="padding: 22px clamp(24px, 5vw, 72px) 0 clamp(24px, 5vw, 72px)">
+        <button onClick="{{ goCart }}" style="border: 0; background: transparent; padding: 0; font-size: 13px; color: #94a3b8" style-hover="color: #1e293b">← Voltar ao carrinho</button>
+      </div>
+
+      <section style="padding: clamp(30px, 4vw, 54px) clamp(24px, 5vw, 72px) clamp(20px, 3vw, 36px) clamp(24px, 5vw, 72px); display: flex; flex-direction: column; gap: 16px; max-width: 760px">
+        <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(40px, 5.6vw, 66px); line-height: 1.04; letter-spacing: -0.032em; color: #1e293b">Entrega e pagamento</h1>
+        <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #64748b">Confirme onde devemos deixar o pedido e como você prefere pagar.</p>
+      </section>
+
+      <section style="padding: 0 clamp(24px, 5vw, 72px) clamp(70px, 9vw, 110px) clamp(24px, 5vw, 72px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: clamp(36px, 5vw, 72px); align-items: start">
+
+        <div style="display: flex; flex-direction: column; gap: 34px; min-width: 0">
+          <div style="display: flex; flex-direction: column; gap: 20px">
+            <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Seus dados</div>
+            <sc-for list="{{ fields }}" as="fd" hint-placeholder-count="4">
+              <label style="display: flex; flex-direction: column; gap: 8px">
+                <span style="font-size: 13px; color: #64748b">{{ fd.label }}</span>
+                <input value="{{ fd.value }}" onChange="{{ fd.onChange }}" placeholder="{{ fd.placeholder }}" style="border: 0; border-bottom: 1px solid {{ fd.border }}; background: transparent; padding: 10px 2px; font-size: 15px; color: #1e293b" style-focus="border-bottom-color: {{ accent }}" />
+              </label>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 18px; border-top: 1px solid #f1f5f9; padding-top: 30px">
+            <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Entrega</div>
+            <sc-for list="{{ shipOptions }}" as="so" hint-placeholder-count="2">
+              <button onClick="{{ so.select }}" style="border: 1px solid {{ so.border }}; background: transparent; border-radius: 20px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between; gap: 18px; text-align: left" style-hover="border-color: {{ accent }}">
+                <div style="display: flex; align-items: center; gap: 15px; min-width: 0">
+                  <span style="width: 20px; height: 20px; border-radius: 999px; border: 1.5px solid {{ so.ring }}; display: flex; align-items: center; justify-content: center; flex: none">
+                    <span style="width: 10px; height: 10px; border-radius: 999px; background: {{ so.dot }}"></span>
+                  </span>
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 17px; color: #1e293b">{{ so.label }}</span>
+                    <span style="font-size: 12.5px; color: #94a3b8">{{ so.hint }}</span>
+                  </div>
+                </div>
+                <span style="font-size: 14px; color: #334155; font-variant-numeric: tabular-nums; flex: none">{{ so.price }}</span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 18px; border-top: 1px solid #f1f5f9; padding-top: 30px">
+            <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Pagamento</div>
+            <sc-for list="{{ payOptions }}" as="po" hint-placeholder-count="3">
+              <button onClick="{{ po.select }}" style="border: 1px solid {{ po.border }}; background: transparent; border-radius: 20px; padding: 20px 22px; display: flex; align-items: center; gap: 15px; text-align: left" style-hover="border-color: {{ accent }}">
+                <span style="width: 20px; height: 20px; border-radius: 999px; border: 1.5px solid {{ po.ring }}; display: flex; align-items: center; justify-content: center; flex: none">
+                  <span style="width: 10px; height: 10px; border-radius: 999px; background: {{ po.dot }}"></span>
+                </span>
+                <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                  <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 17px; color: #1e293b">{{ po.label }}</span>
+                  <span style="font-size: 12.5px; color: #94a3b8">{{ po.hint }}</span>
+                </div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 22px; min-width: 0; border-top: 1px solid #f1f5f9; padding-top: 26px">
+          <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: 28px; letter-spacing: -0.025em; color: #1e293b">Seu pedido</h2>
+          <div style="display: flex; flex-direction: column">
+            <sc-for list="{{ cartLines }}" as="l" hint-placeholder-count="2">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #f8fafc">
+                <div style="display: flex; align-items: center; gap: 13px; min-width: 0">
+                  <span style="width: 30px; height: 30px; border-radius: 999px; background: #eff6ff; display: flex; align-items: center; justify-content: center; flex: none; font-size: 12px; font-weight: 500; color: {{ accentHover }}; font-variant-numeric: tabular-nums">{{ l.qty }}</span>
+                  <span style="font-size: 13.5px; color: #475569; text-wrap: pretty">{{ l.name }}</span>
+                </div>
+                <span style="font-size: 13.5px; color: #334155; font-variant-numeric: tabular-nums; flex: none">{{ l.total }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 13px">
+            <sc-for list="{{ summary }}" as="sm" hint-placeholder-count="3">
+              <div style="display: flex; justify-content: space-between; gap: 18px; font-size: 14px">
+                <span style="color: #94a3b8">{{ sm.k }}</span>
+                <span style="color: #334155; font-variant-numeric: tabular-nums">{{ sm.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 18px; border-top: 1px solid #f1f5f9; padding-top: 20px">
+            <span style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Total</span>
+            <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: clamp(30px, 3vw, 38px); letter-spacing: -0.025em; color: #1e293b; font-variant-numeric: tabular-nums">{{ grandTotal }}</span>
+          </div>
+          <button onClick="{{ placeOrder }}" style="border: 0; background: {{ placeBg }}; color: #ffffff; border-radius: 999px; padding: 20px 30px; font-size: 15.5px; font-weight: 500; box-shadow: 0 18px 36px {{ placeGlow }}">{{ placeLabel }}</button>
+          <p style="margin: 0; font-size: 12.5px; line-height: 1.65; color: #94a3b8; text-wrap: pretty">{{ placeNote }}</p>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+    <div style="display: flex; flex-direction: column">
+      <section style="padding: clamp(56px, 9vw, 120px) clamp(24px, 5vw, 72px) clamp(40px, 5vw, 64px) clamp(24px, 5vw, 72px); display: flex; flex-direction: column; gap: 26px; max-width: 780px">
+        <div style="width: 54px; height: 54px; border-radius: 999px; background: #eff6ff; display: flex; align-items: center; justify-content: center">
+          <span style="width: 18px; height: 10px; border-left: 2px solid {{ accent }}; border-bottom: 2px solid {{ accent }}; transform: rotate(-45deg) translateY(-2px)"></span>
+        </div>
+        <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 400; font-size: clamp(40px, 6vw, 72px); line-height: 1.03; letter-spacing: -0.034em; color: #1e293b; text-wrap: pretty">Pedido confirmado. Já estamos preparando.</h1>
+        <p style="margin: 0; font-size: clamp(15px, 1.4vw, 18px); line-height: 1.7; color: #64748b; max-width: 560px; text-wrap: pretty">Enviamos os detalhes para {{ orderEmail }}. {{ orderLead }}</p>
+      </section>
+
+      <section style="padding: 0 clamp(24px, 5vw, 72px) clamp(70px, 9vw, 110px) clamp(24px, 5vw, 72px); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: clamp(30px, 4vw, 56px); align-items: start">
+        <div style="display: flex; flex-direction: column; gap: 16px; border-top: 1px solid #f1f5f9; padding-top: 24px">
+          <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Pedido</div>
+          <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 30px; letter-spacing: -0.02em; color: #1e293b; font-variant-numeric: tabular-nums">{{ orderCode }}</span>
+          <sc-for list="{{ orderMeta }}" as="om" hint-placeholder-count="4">
+            <div style="display: flex; justify-content: space-between; gap: 18px; font-size: 13.5px">
+              <span style="color: #94a3b8">{{ om.k }}</span>
+              <span style="color: #334155; text-align: right; text-wrap: pretty">{{ om.v }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px; border-top: 1px solid #f1f5f9; padding-top: 24px">
+          <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Itens</div>
+          <sc-for list="{{ orderLines }}" as="ol" hint-placeholder-count="2">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px">
+              <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+                <span style="width: 28px; height: 28px; border-radius: 999px; background: #eff6ff; display: flex; align-items: center; justify-content: center; flex: none; font-size: 11.5px; color: {{ accentHover }}; font-variant-numeric: tabular-nums">{{ ol.qty }}</span>
+                <span style="font-size: 13.5px; color: #475569; text-wrap: pretty">{{ ol.name }}</span>
+              </div>
+              <span style="font-size: 13.5px; color: #334155; font-variant-numeric: tabular-nums; flex: none">{{ ol.total }}</span>
+            </div>
+          </sc-for>
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 18px; border-top: 1px solid #f1f5f9; padding-top: 16px">
+            <span style="font-size: 13.5px; color: #94a3b8">Total pago</span>
+            <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 26px; color: #1e293b; font-variant-numeric: tabular-nums">{{ orderTotal }}</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 18px; border-top: 1px solid #f1f5f9; padding-top: 24px">
+          <div style="font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #94a3b8">Acompanhe</div>
+          <sc-for list="{{ orderSteps }}" as="os" hint-placeholder-count="4">
+            <div style="display: flex; align-items: center; gap: 14px">
+              <span style="width: 28px; height: 28px; border-radius: 999px; background: {{ os.bg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                <span style="width: 8px; height: 8px; border-radius: 999px; background: {{ os.dot }}"></span>
+              </span>
+              <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                <span style="font-size: 13.5px; color: {{ os.fg }}">{{ os.label }}</span>
+                <span style="font-size: 11.5px; color: #94a3b8">{{ os.at }}</span>
+              </div>
+            </div>
+          </sc-for>
+          <button onClick="{{ goHome }}" style="align-self: flex-start; margin-top: 6px; border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 17px 28px; font-size: 14.5px; font-weight: 500; box-shadow: 0 18px 36px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Voltar à loja</button>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+
+  <footer style="margin-top: auto; border-top: 1px solid #f1f5f9; padding: clamp(40px, 5vw, 64px) clamp(24px, 5vw, 72px); display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 32px">
+    <div style="display: flex; flex-direction: column; gap: 10px; max-width: 420px">
+      <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 20px; letter-spacing: -0.02em; color: #1e293b">Aurora Mercearia</span>
+      <span style="font-size: 13px; line-height: 1.7; color: #94a3b8; text-wrap: pretty">Rua das Palmeiras, 482 · Pinheiros, São Paulo · entregas de terça a domingo, 11h às 22h.</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 26px; font-size: 13px">
+      <a href="#entregas">Entregas</a>
+      <a href="#trocas">Trocas</a>
+      <a href="#contato">Contato</a>
+    </div>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#2563eb&quot;,&quot;options&quot;:[&quot;#2563eb&quot;,&quot;#0ea5e9&quot;,&quot;#4f46e5&quot;,&quot;#0f766e&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+const CATALOG = [
+  { id: "burrata", name: "Salada de burrata e tomates de estação", cat: "Entradas", price: 52, short: "Burrata cremosa, tomates confitados e manjericão fresco.", long: "Burrata italiana servida com tomates de estação confitados devagar em azeite, manjericão colhido no dia e uma pitada de flor de sal. Chega pronta para servir, em porção para duas pessoas." },
+  { id: "risoto", name: "Risoto de cogumelos frescos", cat: "Pratos", price: 59, short: "Arbóreo, mix de cogumelos e parmesão 24 meses.", long: "Arroz arbóreo cozido no caldo de legumes com shitake, shimeji e paris salteados na manteiga, finalizado com parmesão maturado 24 meses. Acompanha instruções para o ponto ideal em casa." },
+  { id: "moqueca", name: "Moqueca de peixe branco", cat: "Pratos", price: 98, short: "Leite de coco, dendê e pimentões, sem pimenta.", long: "Peixe branco fresco cozido no leite de coco com pimentões, coentro e um toque de dendê. Vem com arroz de coco à parte, em porção generosa para duas pessoas." },
+  { id: "malbec", name: "Malbec de altitude, safra 2021", cat: "Vinhos", price: 148, short: "Mendoza · encorpado, notas de ameixa e cacau.", long: "Malbec cultivado a 1.200 metros em Mendoza. Encorpado, com taninos redondos, notas de ameixa madura e cacau. Combina com carnes vermelhas e massas de molho intenso." },
+  { id: "focaccia", name: "Focaccia de romeiro e azeite", cat: "Padaria", price: 34, short: "Fermentação natural de 24 horas.", long: "Massa de fermentação natural descansada por 24 horas, coberta com romeiro fresco, azeite extravirgem e flor de sal. Assada na manhã da entrega." },
+  { id: "gateau", name: "Petit gâteau de chocolate 70%", cat: "Sobremesas", price: 29.45, short: "Recheio cremoso, dois na embalagem.", long: "Bolo de chocolate 70% com centro cremoso, pronto para ir ao forno por seis minutos. A embalagem traz duas unidades e uma porção de creme inglês." },
+  { id: "fettuccine", name: "Fettuccine fresco ao pesto", cat: "Pratos", price: 62.5, short: "Massa do dia, pesto de manjericão e pinoli.", long: "Fettuccine feito na casa no mesmo dia da entrega, acompanhado de pesto de manjericão com pinoli tostado e pecorino. Cozinha em três minutos." },
+  { id: "cheesecake", name: "Cheesecake de frutas vermelhas", cat: "Sobremesas", price: 32, short: "Base de castanhas e calda da estação.", long: "Cheesecake cremoso sobre base de castanhas, coberto com calda de frutas vermelhas da estação levemente ácida. Serve quatro fatias." },
+  { id: "azeite", name: "Azeite extravirgem primeira safra", cat: "Mercearia", price: 76, short: "Colheita antecipada, acidez 0,2%.", long: "Azeite de colheita antecipada, extraído a frio, com acidez de 0,2% e final levemente picante. Garrafa de 500 ml em vidro escuro." }
+];
+
+class Component extends DCLogic {
+  state = {
+    view: "grid", cat: "Tudo", query: "", current: "risoto", qty: 1,
+    cart: { burrata: 1, malbec: 1 },
+    ship: "Entrega padrão", pay: "Pix", busy: false,
+    buyer: { name: "", email: "", address: "", phone: "" },
+    order: null
+  };
+
+  addToCart(id, n) {
+    this.setState(s => ({ cart: { ...s.cart, [id]: (s.cart[id] || 0) + n } }));
+  }
+  setQty(id, n) {
+    this.setState(s => {
+      const next = { ...s.cart };
+      if (n <= 0) delete next[id]; else next[id] = Math.min(20, n);
+      return { cart: next };
+    });
+  }
+
+  brl(n) { return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  renderVals() {
+    const p = this.props;
+    const accent = p.accentColor ?? "#2563eb";
+    const mix = (pct, other) => "color-mix(in oklab, " + accent + " " + pct + "%, " + other + ")";
+    const accentHover = mix(85, "#0f172a");
+    const accentGlow = "color-mix(in oklab, " + accent + " 26%, transparent)";
+
+    const catList = ["Tudo", "Pratos", "Entradas", "Sobremesas", "Vinhos", "Padaria", "Mercearia"];
+    const q = this.state.query.trim().toLowerCase();
+    const visible = CATALOG.filter(x =>
+      (this.state.cat === "Tudo" || x.cat === this.state.cat) &&
+      (!q || x.name.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q))
+    );
+
+    const decorate = x => ({
+      ...x,
+      price: this.brl(x.price),
+      slotId: "shop-" + x.id,
+      slotHint: "Foto — " + x.name,
+      open: () => this.setState({ view: "detail", current: x.id, qty: 1 }),
+      add: () => this.addToCart(x.id, 1)
+    });
+
+    const cur = CATALOG.find(x => x.id === this.state.current) || CATALOG[0];
+    const qty = this.state.qty;
+    const detail = {
+      ...cur,
+      price: this.brl(cur.price),
+      slotId: "detail-" + cur.id,
+      slotHint: "Foto principal — " + cur.name,
+      thumbs: [1, 2, 3].map(n => ({ id: "detail-" + cur.id + "-" + n, hint: "Detalhe " + n })),
+      stockNote: "Entrega hoje se pedir até 18h",
+      specs: [
+        { k: "Categoria", v: cur.cat },
+        { k: "Porção", v: cur.cat === "Vinhos" ? "Garrafa 750 ml" : "Serve 2 pessoas" },
+        { k: "Preparo", v: cur.cat === "Vinhos" || cur.cat === "Mercearia" ? "Pronto para servir" : "Finaliza em casa em minutos" },
+        { k: "Entrega", v: "Terça a domingo, 11h às 22h" }
+      ]
+    };
+
+    const cartIds = Object.keys(this.state.cart);
+    const cartLines = cartIds.map(id => {
+      const x = CATALOG.find(c => c.id === id);
+      const n = this.state.cart[id];
+      return {
+        ...x, qty: n,
+        slotId: "shop-" + id, slotHint: "Foto — " + x.name,
+        total: this.brl(x.price * n),
+        open: () => this.setState({ view: "detail", current: id, qty: 1 }),
+        inc: () => this.setQty(id, n + 1),
+        dec: () => this.setQty(id, n - 1),
+        remove: () => this.setQty(id, 0)
+      };
+    });
+    const cartCount = cartIds.reduce((a, id) => a + this.state.cart[id], 0);
+    const subtotal = cartIds.reduce((a, id) => a + CATALOG.find(c => c.id === id).price * this.state.cart[id], 0);
+    const shipCost = this.state.ship === "Retirar na loja" ? 0 : subtotal >= 250 || subtotal === 0 ? 0 : 18;
+    const total = subtotal + shipCost;
+    const b = this.state.buyer;
+    const valid = b.name.trim().length > 2 && b.email.includes("@") && b.address.trim().length > 5 && cartCount > 0;
+
+    const radio = on => ({
+      border: on ? accent : "#e2e8f0",
+      ring: on ? accent : "#cbd5e1",
+      dot: on ? accent : "transparent"
+    });
+    const field = (key, label, placeholder) => ({
+      label, placeholder, value: b[key],
+      border: b[key] && key === "email" && !b[key].includes("@") ? "#fecaca" : "#e2e8f0",
+      onChange: e => this.setState(s => ({ buyer: { ...s.buyer, [key]: e.target.value } }))
+    });
+
+    const ord = this.state.order;
+
+    return {
+      accent, accentHover, accentGlow,
+      cartCount,
+      cartLines, cartEmpty: cartCount === 0,
+      cartLead: cartCount === 0
+        ? "Seu carrinho está vazio no momento."
+        : cartCount + (cartCount === 1 ? " item selecionado." : " itens selecionados.") + " Entregamos hoje se o pedido sair até 18h.",
+      summary: [
+        { k: "Subtotal", v: this.brl(subtotal) },
+        { k: "Entrega", v: shipCost === 0 ? "Grátis" : this.brl(shipCost) },
+        { k: "Previsão", v: this.state.ship === "Retirar na loja" ? "Pronto em 40 min" : "Hoje, até 22h" }
+      ],
+      grandTotal: this.brl(total),
+      hasItems: cartCount > 0,
+      isCart: this.state.view === "cart",
+      isCheckout: this.state.view === "checkout",
+      isDone: this.state.view === "done",
+      goCart: () => this.setState({ view: "cart" }),
+      goCheckout: () => this.setState({ view: cartCount > 0 ? "checkout" : "cart" }),
+      fields: [
+        field("name", "Nome completo", "Marina Duarte"),
+        field("email", "E-mail", "marina@email.com"),
+        field("address", "Endereço de entrega", "Rua das Palmeiras, 482 · apto 71"),
+        field("phone", "Telefone", "(11) 99999-0000")
+      ],
+      shipOptions: [
+        { label: "Entrega padrão", hint: "Hoje, até 22h", price: shipCost === 0 ? "Grátis" : this.brl(18) },
+        { label: "Retirar na loja", hint: "Pinheiros · pronto em 40 min", price: "Grátis" }
+      ].map(o => ({ ...o, ...radio(this.state.ship === o.label), select: () => this.setState({ ship: o.label }) })),
+      payOptions: [
+        { label: "Pix", hint: "Aprovação imediata" },
+        { label: "Cartão de crédito", hint: "Em até 3x sem juros" },
+        { label: "Na entrega", hint: "Cartão ou dinheiro com o entregador" }
+      ].map(o => ({ ...o, ...radio(this.state.pay === o.label), select: () => this.setState({ pay: o.label }) })),
+      placeLabel: this.state.busy ? "Confirmando pedido…" : valid ? "Confirmar pedido · " + this.brl(total) : "Preencha seus dados",
+      placeBg: this.state.busy ? accentHover : valid ? accent : "#cbd5e1",
+      placeGlow: valid && !this.state.busy ? accentGlow : "transparent",
+      placeNote: this.state.busy
+        ? "Estamos registrando seu pedido. Não feche esta página."
+        : valid
+          ? "Você recebe a confirmação por e-mail em instantes."
+          : "Nome, e-mail e endereço são necessários para seguir.",
+      placeOrder: () => {
+        if (!valid || this.state.busy) return;
+        this.setState({ busy: true });
+        setTimeout(() => this.setState(s => ({
+          busy: false,
+          view: "done",
+          order: {
+            code: "#" + (10430 + (this._seq = (this._seq || 0) + 1)),
+            email: s.buyer.email, ship: s.ship, pay: s.pay, address: s.buyer.address,
+            lines: cartLines.map(l => ({ qty: l.qty, name: l.name, total: l.total })),
+            total: this.brl(total)
+          },
+          cart: {}
+        })), 750);
+      },
+      orderCode: ord ? ord.code : "—",
+      orderEmail: ord ? ord.email : "seu e-mail",
+      orderLead: ord && ord.ship === "Retirar na loja"
+        ? "Você recebe um aviso quando o pedido estiver pronto para retirada no balcão."
+        : "Você recebe um aviso quando o entregador sair da nossa cozinha.",
+      orderTotal: ord ? ord.total : "—",
+      orderLines: ord ? ord.lines : [],
+      orderMeta: ord ? [
+        { k: "Pagamento", v: ord.pay },
+        { k: "Entrega", v: ord.ship },
+        { k: "Endereço", v: ord.ship === "Retirar na loja" ? "Rua das Palmeiras, 482 · loja" : ord.address },
+        { k: "Previsão", v: ord.ship === "Retirar na loja" ? "Pronto em 40 min" : "Hoje, até 22h" }
+      ] : [],
+      orderSteps: (ord && ord.ship === "Retirar na loja" ? [
+        { label: "Pedido recebido", at: "agora", done: true },
+        { label: "Em preparo na cozinha", at: "em alguns minutos", done: false },
+        { label: "Pronto para retirada", at: "aviso por e-mail em ~40 min", done: false },
+        { label: "Retirado na loja", at: "Rua das Palmeiras, 482", done: false }
+      ] : [
+        { label: "Pedido recebido", at: "agora", done: true },
+        { label: "Em preparo na cozinha", at: "em alguns minutos", done: false },
+        { label: "Saiu para entrega", at: "aviso por e-mail", done: false },
+        { label: "Entregue", at: "hoje, até 22h", done: false }
+      ]).map(s => ({
+        ...s,
+        bg: s.done ? "#eff6ff" : "#f8fafc",
+        dot: s.done ? accent : "#cbd5e1",
+        fg: s.done ? "#1e293b" : "#94a3b8"
+      })),
+      isGrid: this.state.view === "grid",
+      isDetail: this.state.view === "detail",
+      isEmpty: this.state.view === "grid" && visible.length === 0,
+      goHome: () => this.setState({ view: "grid" }),
+      cats: catList.map(c => {
+        const on = this.state.cat === c;
+        return {
+          label: c,
+          fg: on ? "#1e293b" : "#94a3b8",
+          weight: on ? "500" : "400",
+          underline: on ? accent : "transparent",
+          select: () => this.setState({ cat: c })
+        };
+      }),
+      query: this.state.query,
+      onQuery: e => this.setState({ query: e.target.value }),
+      products: visible.map(decorate),
+      detail,
+      related: CATALOG.filter(x => x.id !== cur.id).slice(0, 3).map(x => ({
+        ...decorate(x), slotId: "related-" + x.id, slotHint: "Foto — " + x.name
+      })),
+      qty,
+      lineTotal: this.brl(cur.price * qty),
+      inc: () => this.setState(s => ({ qty: Math.min(20, s.qty + 1) })),
+      dec: () => this.setState(s => ({ qty: Math.max(1, s.qty - 1) })),
+      decFg: qty <= 1 ? "#cbd5e1" : "#334155",
+      addDetail: () => { this.addToCart(cur.id, qty); this.setState({ qty: 1, view: "cart" }); }
+    };
+  }
+}
+
+</script>
+</body>
+</html>

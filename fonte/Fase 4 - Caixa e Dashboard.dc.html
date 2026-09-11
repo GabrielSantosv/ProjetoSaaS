@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="./permissions.js"></script>
+<script src="./money.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; -webkit-font-smoothing: antialiased; }
+  a { color: #2563eb; text-decoration: none; }
+  a:hover { color: #1d4ed8; }
+  input, button, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  input:focus, textarea:focus { outline: none; }
+  ::selection { background: #dbeafe; }
+</style>
+</helmet>
+
+<sc-if value="{{ confirming }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ backdropCancel }}" style="position: fixed; inset: 0; z-index: 60; background: rgba(15,23,42,0.45); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px">
+    <div style="width: 100%; max-width: 460px; background: #ffffff; border-radius: 26px; padding: 34px; box-shadow: 0 40px 90px rgba(2,6,23,0.3); display: flex; flex-direction: column; gap: 20px">
+      <span style="width: 46px; height: 46px; border-radius: 999px; background: #fffbeb; display: flex; align-items: center; justify-content: center">
+        <span style="width: 11px; height: 11px; border-radius: 50%; background: #b45309"></span>
+      </span>
+      <div style="display: flex; flex-direction: column; gap: 9px">
+        <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; color: #1e293b; text-wrap: pretty">{{ confirmTitle }}</h2>
+        <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: #64748b; text-wrap: pretty">{{ confirmNote }}</p>
+      </div>
+      <div style="background: #f8fafc; border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 11px">
+        <sc-for list="{{ confirmLines }}" as="cl" hint-placeholder-count="3">
+          <div style="display: flex; justify-content: space-between; gap: 16px; font-size: 12.5px">
+            <span style="color: #94a3b8">{{ cl.k }}</span>
+            <span style="color: {{ cl.fg }}; font-weight: 600; font-variant-numeric: tabular-nums">{{ cl.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <button onClick="{{ confirmClose }}" style="border: 0; background: #b45309; color: #ffffff; border-radius: 999px; padding: 14px 24px; font-size: 13.5px; font-weight: 500; box-shadow: 0 14px 28px rgba(180,83,9,0.28)">{{ confirmCta }}</button>
+        <button onClick="{{ cancelClose }}" style="border: 1px solid #e2e8f0; background: #ffffff; color: #475569; border-radius: 999px; padding: 14px 24px; font-size: 13.5px; font-weight: 500">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<div style="display: flex; min-height: 100vh; background: #f8fafc">
+
+  <aside style="width: 268px; flex: none; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh">
+    <div style="padding: 28px 24px 24px 24px; display: flex; align-items: center; gap: 12px">
+      <div style="width: 38px; height: 38px; border-radius: 999px; background: {{ accent }}; display: flex; align-items: center; justify-content: center; flex: none">
+        <span style="width: 13px; height: 13px; background: #ffffff; border-radius: 3px; transform: rotate(45deg)"></span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em; color: #ffffff">Comércio</div>
+        <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b">Área interna</div>
+      </div>
+    </div>
+
+    <nav style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 16px 20px 16px; display: flex; flex-direction: column; gap: 5px">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="7">
+        <button onClick="{{ item.select }}" style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; border: 0; background: transparent; border-radius: 999px; padding: 8px 12px 8px 8px; text-align: left; color: #cbd5e1; font-size: 13.5px; font-weight: 500" style-hover="background: rgba(148,163,184,0.14); color: #ffffff">
+          <sc-if value="{{ item.active }}" hint-placeholder-val="{{ false }}">
+            <span style="position: absolute; inset: 0; background: {{ accent }}; border-radius: 999px; box-shadow: 0 12px 24px {{ accentGlow }}"></span>
+          </sc-if>
+          <span style="position: relative; display: flex; align-items: center; gap: 11px; color: {{ item.fg }}">
+            <span style="width: 30px; height: 30px; border-radius: 999px; background: {{ item.iconBg }}; display: flex; align-items: center; justify-content: center; flex: none">
+              <span style="width: 9px; height: 9px; background: {{ item.iconFg }}; border-radius: {{ item.iconRadius }}; transform: {{ item.iconRotate }}"></span>
+            </span>
+            {{ item.label }}
+          </span>
+          <sc-if value="{{ item.badge }}" hint-placeholder-val="{{ false }}">
+            <span style="position: relative; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 9px; background: {{ item.badgeBg }}; color: {{ item.badgeFg }}">{{ item.badge }}</span>
+          </sc-if>
+        </button>
+      </sc-for>
+    </nav>
+
+    <div style="padding: 14px 22px 24px 22px; flex: none">
+      <div style="background: rgba(148,163,184,0.12); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 9px">
+        <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ accentOnDark }}">Importação</div>
+        <div style="font-size: 12.5px; color: #cbd5e1; line-height: 1.55">2 planilhas na fila de processamento.</div>
+        <button onClick="{{ goImport }}" style="margin-top: 4px; align-self: flex-start; border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 500" style-hover="background: {{ accentHover }}">Ver fila</button>
+      </div>
+    </div>
+  </aside>
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+
+    <header style="position: sticky; top: 0; z-index: 5; background: rgba(248,250,252,0.9); backdrop-filter: blur(10px); padding: 22px 44px; display: flex; align-items: center; justify-content: space-between; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Comércio SaaS · Área interna</div>
+        <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; color: #334155">{{ activeLabel }}</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px">
+        <div style="display: flex; align-items: center; gap: 9px; background: #ffffff; border-radius: 999px; padding: 8px 15px; box-shadow: 0 12px 30px rgba(2,6,23,0.05)">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: {{ shiftDot }}"></span>
+          <span style="font-size: 12px; color: #64748b">{{ shiftLabel }}</span>
+        </div>
+        <div style="width: 1px; height: 28px; background: #e2e8f0"></div>
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div style="text-align: right; display: flex; flex-direction: column; gap: 2px">
+            <div style="font-size: 13px; font-weight: 500; color: #1e293b">{{ userName }}</div>
+            <div style="font-size: 9.5px; letter-spacing: 0.14em; color: {{ accent }}; font-weight: 600">{{ userRole }}</div>
+          </div>
+          <div style="width: 40px; height: 40px; border-radius: 999px; background: {{ accentSoft }}; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 14px; color: {{ accentHover }}">{{ initials }}</div>
+        </div>
+      </div>
+    </header>
+
+    <main style="flex: 1; padding: 14px 44px 56px 44px; display: flex; flex-direction: column; gap: 30px">
+
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 10px; max-width: 620px">
+          <div style="font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">{{ eyebrow }}</div>
+          <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; color: #1e293b">{{ pageTitle }}</h1>
+          <p style="margin: 0; font-size: 14px; line-height: 1.65; color: #64748b; text-wrap: pretty">{{ pageLead }}</p>
+        </div>
+        <div style="display: flex; gap: 10px">
+          <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+            <div style="display: flex; gap: 8px; background: #ffffff; border-radius: 999px; padding: 5px; box-shadow: 0 12px 30px rgba(2,6,23,0.05)">
+              <sc-for list="{{ ranges }}" as="r" hint-placeholder-count="3">
+                <button onClick="{{ r.select }}" style="border: 0; background: {{ r.bg }}; color: {{ r.fg }}; border-radius: 999px; padding: 9px 17px; font-size: 12.5px; font-weight: 500">{{ r.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isCaixa }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ toggleShift }}" style="border: 0; background: {{ shiftBtnBg }}; color: {{ shiftBtnFg }}; border-radius: 999px; padding: 12px 24px; font-size: 13px; font-weight: 500; box-shadow: 0 14px 28px {{ shiftBtnGlow }}">{{ shiftBtnLabel }}</button>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 26px">
+
+          <div style="display: flex; align-items: center; gap: 11px; background: #fffbeb; border-radius: 18px; padding: 14px 18px">
+            <span style="width: 30px; height: 30px; border-radius: 999px; background: #fef3c7; display: flex; align-items: center; justify-content: center; flex: none">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #b45309"></span>
+            </span>
+            <span style="font-size: 12.5px; color: #92400e; line-height: 1.55">Dados mockados — o <strong>ReportService</strong> ainda não existe no backend. A estrutura já espera o contrato final.</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 248px), 1fr)); gap: 22px">
+            <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="4">
+              <div style="background: #ffffff; border-radius: 24px; padding: 26px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 16px">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+                  <span style="width: 44px; height: 44px; border-radius: 999px; background: {{ accentSoft }}; display: flex; align-items: center; justify-content: center; flex: none">
+                    <span style="width: 14px; height: 14px; background: {{ accent }}; border-radius: {{ m.iconRadius }}; transform: {{ m.iconRotate }}"></span>
+                  </span>
+                  <span style="font-size: 11.5px; font-weight: 600; color: {{ m.deltaFg }}; background: {{ m.deltaBg }}; border-radius: 999px; padding: 4px 11px">{{ m.delta }}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 7px">
+                  <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">{{ m.label }}</div>
+                  <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 34px; letter-spacing: -0.025em; color: #1e293b; font-variant-numeric: tabular-nums">{{ m.value }}</div>
+                  <div style="font-size: 12px; color: #94a3b8; line-height: 1.5">{{ m.hint }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 22px; align-items: start">
+
+            <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 24px; min-width: 0">
+              <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Faturamento por dia</div>
+                  <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 21px; letter-spacing: -0.02em; color: #334155">{{ chartTitle }}</h2>
+                </div>
+                <span style="font-size: 12px; color: #94a3b8">pico {{ chartPeak }}</span>
+              </div>
+              <div style="display: flex; align-items: flex-end; gap: 10px; height: 168px">
+                <sc-for list="{{ chart }}" as="c" hint-placeholder-count="7">
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px; min-width: 0">
+                    <div style="width: 100%; display: flex; align-items: flex-end; height: 130px">
+                      <div style="width: 100%; height: {{ c.h }}; background: {{ c.bg }}; border-radius: 10px 10px 4px 4px; transition: height 0.4s ease"></div>
+                    </div>
+                    <span style="font-size: 11px; color: {{ c.labelFg }}; font-weight: {{ c.labelWeight }}">{{ c.day }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 22px; min-width: 0">
+              <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Receita por canal</div>
+              <sc-for list="{{ channels }}" as="ch" hint-placeholder-count="3">
+                <div style="display: flex; flex-direction: column; gap: 10px">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+                      <span style="width: 34px; height: 34px; border-radius: 999px; background: {{ ch.iconBg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                        <span style="width: 9px; height: 9px; border-radius: 50%; background: {{ ch.color }}"></span>
+                      </span>
+                      <span style="font-size: 13px; color: #475569">{{ ch.label }}</span>
+                    </div>
+                    <span style="font-size: 13.5px; font-weight: 600; color: #1e293b; font-variant-numeric: tabular-nums">{{ ch.value }}</span>
+                  </div>
+                  <div style="height: 8px; border-radius: 999px; background: #f1f5f9; overflow: hidden">
+                    <div style="height: 100%; border-radius: 999px; width: {{ ch.pct }}; background: {{ ch.color }}; transition: width 0.4s ease"></div>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; display: flex; align-items: baseline; justify-content: space-between">
+                <span style="font-size: 12.5px; color: #64748b">Total do período</span>
+                <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 24px; color: #1e293b; font-variant-numeric: tabular-nums">{{ channelTotal }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px">
+            <sc-for list="{{ miniCards }}" as="mc" hint-placeholder-count="3">
+              <div style="background: #ffffff; border-radius: 24px; padding: 24px 26px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 16px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">{{ mc.title }}</div>
+                <sc-for list="{{ mc.lines }}" as="l" hint-placeholder-count="3">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px">
+                    <div style="display: flex; align-items: center; gap: 11px; min-width: 0">
+                      <span style="width: 28px; height: 28px; border-radius: 999px; background: {{ l.bg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ l.fg }}"></span>
+                      </span>
+                      <span style="font-size: 12.5px; color: #64748b">{{ l.k }}</span>
+                    </div>
+                    <span style="font-size: 13px; font-weight: 600; color: #334155; font-variant-numeric: tabular-nums">{{ l.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCaixa }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 26px">
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 248px), 1fr)); gap: 22px">
+            <sc-for list="{{ cashCards }}" as="c" hint-placeholder-count="4">
+              <div style="background: #ffffff; border-radius: 24px; padding: 26px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 16px">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+                  <span style="width: 44px; height: 44px; border-radius: 999px; background: {{ c.iconBg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                    <span style="width: 14px; height: 14px; background: {{ c.iconFg }}; border-radius: {{ c.iconRadius }}; transform: {{ c.iconRotate }}"></span>
+                  </span>
+                  <sc-if value="{{ c.tag }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 11.5px; font-weight: 600; color: {{ c.tagFg }}; background: {{ c.tagBg }}; border-radius: 999px; padding: 4px 11px">{{ c.tag }}</span>
+                  </sc-if>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 7px">
+                  <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">{{ c.label }}</div>
+                  <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: clamp(22px, 2.4vw, 32px); letter-spacing: -0.025em; color: {{ c.valueFg }}; font-variant-numeric: tabular-nums; overflow-wrap: anywhere">{{ c.value }}</div>
+                  <div style="font-size: 12px; color: #94a3b8; line-height: 1.5">{{ c.hint }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 22px; align-items: start">
+
+            <div style="background: #ffffff; border-radius: 24px; padding: 30px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 24px; min-width: 0">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Conciliação</div>
+                  <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: #334155">Contagem por forma</h2>
+                </div>
+                <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 6px 13px; background: {{ recon.bg }}; color: {{ recon.fg }}">
+                  <span style="width: 6px; height: 6px; border-radius: 50%; background: {{ recon.fg }}"></span>{{ recon.status }}
+                </span>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 14px">
+                <sc-for list="{{ methods }}" as="m" hint-placeholder-count="4">
+                  <div style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(96px, 0.8fr) minmax(80px, 0.7fr); gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid #f1f5f9">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+                      <span style="width: 34px; height: 34px; border-radius: 999px; background: {{ accentSoft }}; display: flex; align-items: center; justify-content: center; flex: none">
+                        <span style="width: 9px; height: 9px; background: {{ accent }}; border-radius: {{ m.iconRadius }}; transform: {{ m.iconRotate }}"></span>
+                      </span>
+                      <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+                        <span style="font-size: 13.5px; font-weight: 500; color: #334155">{{ m.label }}</span>
+                        <span style="font-size: 11.5px; color: #94a3b8">sistema {{ m.expected }}</span>
+                      </div>
+                    </div>
+                    <input value="{{ m.counted }}" onChange="{{ m.onChange }}" disabled="{{ locked }}" style="border: 1px solid #e2e8f0; background: {{ inputBg }}; border-radius: 12px; padding: 11px 13px; font-size: 13.5px; color: #334155; font-variant-numeric: tabular-nums; text-align: right; min-width: 0" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                    <span style="font-size: 12.5px; font-weight: 600; color: {{ m.diffFg }}; text-align: right; font-variant-numeric: tabular-nums">{{ m.diffLabel }}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="background: {{ recon.panelBg }}; border-radius: 20px; padding: 22px 24px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 14px">
+                <div style="display: flex; flex-direction: column; gap: 5px">
+                  <span style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ recon.fg }}; font-weight: 600">Diferença total</span>
+                  <span style="font-size: 12.5px; color: {{ recon.fg }}">{{ recon.note }}</span>
+                </div>
+                <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 32px; letter-spacing: -0.02em; color: {{ recon.fg }}; font-variant-numeric: tabular-nums">{{ recon.diff }}</span>
+              </div>
+
+              <label style="display: flex; flex-direction: column; gap: 7px">
+                <span style="font-size: 12px; color: #64748b">Observação do fechamento</span>
+                <textarea value="{{ note }}" onChange="{{ setNote }}" rows="2" placeholder="Ex.: sangria de R$ 200 às 21h, troco reposto pelo gerente." style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155; resize: vertical; font-family: inherit" style-focus="border-color: {{ accent }}; background: #ffffff"></textarea>
+              </label>
+
+              <div style="display: flex; flex-wrap: wrap; gap: 10px">
+                <button onClick="{{ closeShift }}" style="border: 0; background: {{ closeBtnBg }}; color: #ffffff; border-radius: 999px; padding: 14px 26px; font-size: 13.5px; font-weight: 500; box-shadow: 0 14px 28px {{ closeBtnGlow }}">{{ closeBtnLabel }}</button>
+                <button onClick="{{ resetCount }}" style="border: 1px solid #bfdbfe; background: #ffffff; color: {{ accent }}; border-radius: 999px; padding: 14px 24px; font-size: 13.5px; font-weight: 500" style-hover="background: {{ accentSoft }}">Recontar</button>
+                <div style="flex: 1"></div>
+                <button style="border: 0; background: #f8fafc; color: #64748b; border-radius: 999px; padding: 14px 22px; font-size: 13px; font-weight: 500">Imprimir cego</button>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 22px; min-width: 0">
+              <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 20px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Turno atual</div>
+                <div style="display: flex; flex-direction: column; gap: 13px">
+                  <sc-for list="{{ shiftMeta }}" as="s" hint-placeholder-count="4">
+                    <div style="display: flex; justify-content: space-between; gap: 14px; font-size: 12.5px">
+                      <span style="color: #94a3b8">{{ s.k }}</span>
+                      <span style="color: #334155; text-align: right">{{ s.v }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; display: flex; align-items: baseline; justify-content: space-between">
+                  <span style="font-size: 12.5px; color: #64748b">Esperado em gaveta</span>
+                  <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 24px; color: #1e293b; font-variant-numeric: tabular-nums">{{ expectedCash }}</span>
+                </div>
+              </div>
+
+              <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 18px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Movimentos do turno</div>
+                <div style="display: flex; flex-direction: column">
+                  <sc-for list="{{ movements }}" as="mv" hint-placeholder-count="5">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid #f1f5f9">
+                      <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+                        <span style="width: 30px; height: 30px; border-radius: 999px; background: {{ mv.bg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ mv.fg }}"></span>
+                        </span>
+                        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                          <span style="font-size: 12.5px; color: #334155">{{ mv.label }}</span>
+                          <span style="font-size: 11px; color: #94a3b8">{{ mv.at }}</span>
+                        </div>
+                      </div>
+                      <span style="font-size: 13px; font-weight: 600; color: {{ mv.fg }}; font-variant-numeric: tabular-nums; flex: none">{{ mv.value }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 14px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Últimos fechamentos</div>
+                <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px">
+                    <div style="display: flex; flex-direction: column; gap: 2px">
+                      <span style="font-size: 12.5px; color: #334155">{{ h.day }}</span>
+                      <span style="font-size: 11px; color: #94a3b8">{{ h.who }}</span>
+                    </div>
+                    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 5px 12px; background: {{ h.bg }}; color: {{ h.fg }}">
+                      <span style="width: 6px; height: 6px; border-radius: 50%; background: {{ h.fg }}"></span>{{ h.diff }}
+                    </span>
+                  </div>
+                </sc-for>
+                <button onClick="{{ openHistory }}" style="align-self: flex-start; margin-top: 6px; border: 1px solid #bfdbfe; background: #ffffff; color: {{ accent }}; border-radius: 999px; padding: 10px 18px; font-size: 12.5px; font-weight: 500" style-hover="background: {{ accentSoft }}">Ver histórico completo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 22px">
+          <button onClick="{{ backToShift }}" style="align-self: flex-start; border: 0; background: transparent; padding: 0; font-size: 12.5px; color: #94a3b8" style-hover="color: #334155">← Voltar ao turno</button>
+
+          <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 22px">
+            <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+              <div style="display: flex; flex-direction: column; gap: 7px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Histórico</div>
+                <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 30px; letter-spacing: -0.02em; color: #334155">Fechamentos de caixa</h2>
+                <span style="font-size: 12.5px; color: #94a3b8">{{ histCount }} registrados nos últimos 14 dias</span>
+              </div>
+              <div style="display: flex; gap: 8px; background: #f8fafc; border-radius: 999px; padding: 5px">
+                <sc-for list="{{ histFilters }}" as="hf" hint-placeholder-count="3">
+                  <button onClick="{{ hf.select }}" style="border: 0; background: {{ hf.bg }}; color: {{ hf.fg }}; border-radius: 999px; padding: 9px 16px; font-size: 12px; font-weight: 500">{{ hf.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column">
+              <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr 0.9fr 1.1fr; gap: 14px; padding: 0 4px 12px 4px; border-bottom: 1px solid #f1f5f9">
+                <span style="font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8">Turno</span>
+                <span style="font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8">Operador</span>
+                <span style="font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8">Terminal</span>
+                <span style="font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; text-align: right">Total</span>
+                <span style="font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; text-align: right">Conciliação</span>
+              </div>
+              <sc-for list="{{ histRows }}" as="hr" hint-placeholder-count="8">
+                <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr 0.9fr 1.1fr; gap: 14px; align-items: center; padding: 15px 4px; border-bottom: 1px solid #f8fafc">
+                  <span style="font-size: 13px; color: #334155">{{ hr.day }}</span>
+                  <span style="font-size: 12.5px; color: #64748b">{{ hr.who }}</span>
+                  <span style="font-size: 12.5px; color: #94a3b8">{{ hr.terminal }}</span>
+                  <span style="font-size: 12.5px; color: #334155; text-align: right; font-variant-numeric: tabular-nums">{{ hr.total }}</span>
+                  <span style="justify-self: end; display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 5px 12px; background: {{ hr.bg }}; color: {{ hr.fg }}">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: {{ hr.fg }}"></span>{{ hr.diff }}
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px">
+              <span style="font-size: 12px; color: #94a3b8">{{ histRange }}</span>
+              <div style="display: flex; align-items: center; gap: 10px">
+                <button onClick="{{ histPrev }}" style="border: 1px solid #e2e8f0; background: #ffffff; color: {{ histPrevFg }}; border-radius: 999px; padding: 9px 18px; font-size: 12.5px; font-weight: 500">Anterior</button>
+                <span style="font-size: 12px; color: #64748b; font-variant-numeric: tabular-nums">{{ histPageLabel }}</span>
+                <button onClick="{{ histNext }}" style="border: 1px solid #e2e8f0; background: #ffffff; color: {{ histNextFg }}; border-radius: 999px; padding: 9px 18px; font-size: 12.5px; font-weight: 500">Próxima</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+        <div style="background: #ffffff; border-radius: 24px; padding: 56px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+          <span style="width: 52px; height: 52px; border-radius: 999px; background: {{ accentSoft }}; display: flex; align-items: center; justify-content: center">
+            <span style="width: 14px; height: 14px; background: {{ accent }}; border-radius: 2px; transform: rotate(45deg)"></span>
+          </span>
+          <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 26px; color: #334155">{{ deniedTitle }}</h2>
+          <p style="margin: 0; font-size: 13.5px; color: #94a3b8; max-width: 380px; line-height: 1.6">{{ deniedNote }}</p>
+        </div>
+      </sc-if>
+
+    </main>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;userName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Helena Braga&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;userRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADMIN&quot;,&quot;VENDEDOR&quot;,&quot;PDV&quot;,&quot;CAIXA&quot;],&quot;default&quot;:&quot;ADMIN&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#2563eb&quot;,&quot;options&quot;:[&quot;#2563eb&quot;,&quot;#0ea5e9&quot;,&quot;#4f46e5&quot;,&quot;#0f766e&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+const EXPECTED = { Dinheiro: 1840.5, "Cartão de crédito": 6420, "Cartão de débito": 2310.75, Pix: 3980.25 };
+const OPENING = 300;
+
+class Component extends DCLogic {
+  state = {
+    active: "dashboard",
+    caixaView: "turno",
+    histPage: 1,
+    histFilter: "Todos",
+    confirming: false,
+    busy: false,
+    range: "7 dias",
+    shiftOpen: true,
+    closed: false,
+    note: "",
+    counted: { Dinheiro: "1.812,00", "Cartão de crédito": "6.420,00", "Cartão de débito": "2.310,75", Pix: "3.980,25" }
+  };
+
+  brl(n) {
+    const s = Math.abs(n).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n < 0 ? "− R$ " : "R$ ") + s;
+  }
+  num(s) {
+    const m = typeof window !== "undefined" && window.AuroraMoney;
+    return m ? m.parseBRL(s) : parseFloat(String(s || "").replace(",", ".")) || 0;
+  }
+
+  componentDidMount() {
+    this._esc = e => {
+      if (e.key === "Escape" && this.state.confirming && !this.state.busy) this.setState({ confirming: false });
+    };
+    document.addEventListener("keydown", this._esc);
+  }
+  componentWillUnmount() {
+    document.removeEventListener("keydown", this._esc);
+  }
+  renderVals() {
+    const p = this.props;
+    const accent = p.accentColor ?? "#2563eb";
+    const mix = (pct, other) => "color-mix(in oklab, " + accent + " " + pct + "%, " + other + ")";
+    const accentHover = mix(85, "#0f172a");
+    const accentSoft = mix(11, "#ffffff");
+    const accentGlow = "color-mix(in oklab, " + accent + " 32%, transparent)";
+    const accentOnDark = mix(70, "#ffffff");
+
+    const shapes = {
+      round: { iconRadius: "999px", iconRotate: "none" },
+      square: { iconRadius: "2px", iconRotate: "none" },
+      diamond: { iconRadius: "2px", iconRotate: "rotate(45deg)" }
+    };
+    const items = [
+      { id: "dashboard", label: "Dashboard", shape: "square" },
+      { id: "pedidos", label: "Pedidos", shape: "round", badge: "16" },
+      { id: "pdv", label: "PDV · Mesas", shape: "diamond", badge: "6/14" },
+      { id: "produtos", label: "Produtos", shape: "square", badge: "18" },
+      { id: "importacao", label: "Importação", shape: "diamond", badge: "2" },
+      { id: "caixa", label: "Caixa", shape: "round" },
+      { id: "configuracoes", label: "Configurações", shape: "square" }
+    ];
+    const role = p.userRole ?? "ADMIN";
+    const perms = (typeof window !== "undefined" && window.AuroraPerms) || null;
+    const may = id => (perms ? perms.canAccess(role, id) : true);
+    const nav = items.filter(it => may(it.id)).map(it => {
+      const active = this.state.active === it.id;
+      return {
+        ...it, ...shapes[it.shape], active,
+        fg: active ? "#ffffff" : "inherit",
+        iconBg: active ? "rgba(255,255,255,0.22)" : "rgba(148,163,184,0.16)",
+        iconFg: active ? "#ffffff" : "#94a3b8",
+        badge: it.badge || null,
+        badgeBg: active ? "rgba(255,255,255,0.22)" : "rgba(148,163,184,0.16)",
+        badgeFg: active ? "#ffffff" : "#94a3b8",
+        select: () => this.setState({ active: it.id })
+      };
+    });
+    const activeItem = items.find(i => i.id === this.state.active) || items[0];
+    const allowed = may(this.state.active);
+    const isDash = this.state.active === "dashboard" && allowed;
+    const inCaixa = this.state.active === "caixa" && allowed;
+    const isCaixa = inCaixa && this.state.caixaView === "turno";
+    const isHistory = inCaixa && this.state.caixaView === "historico";
+
+    // ---- Dashboard (mock) ----
+    const rangeData = {
+      Hoje: { fat: 14580, ped: 128, ticket: 113.9, novos: 12, days: ["06h", "10h", "13h", "16h", "19h", "21h", "23h"], series: [420, 1180, 3240, 2110, 4180, 2860, 590] },
+      "7 dias": { fat: 96420, ped: 812, ticket: 118.75, novos: 74, days: ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"], series: [9800, 11200, 10450, 13900, 18600, 21400, 11070] },
+      "30 dias": { fat: 402180, ped: 3364, ticket: 119.55, novos: 288, days: ["S1", "S2", "S3", "S4", "S5"], series: [82400, 91300, 88600, 97800, 42080] }
+    };
+    const rd = rangeData[this.state.range] || rangeData["7 dias"];
+    const peak = Math.max(...rd.series);
+    const chart = rd.series.map((v, i) => ({
+      day: rd.days[i],
+      h: Math.max(6, Math.round((v / peak) * 100)) + "%",
+      bg: v === peak ? accent : accentSoft,
+      labelFg: v === peak ? accentHover : "#94a3b8",
+      labelWeight: v === peak ? "600" : "400"
+    }));
+
+    const metrics = [
+      { label: "Faturamento", value: this.brl(rd.fat), delta: "+12,4%", up: true, hint: "vs. período anterior", shape: "diamond" },
+      { label: "Pedidos", value: String(rd.ped), delta: "+8,1%", up: true, hint: "34 ainda em preparo", shape: "square" },
+      { label: "Ticket médio", value: this.brl(rd.ticket), delta: "−2,1%", up: false, hint: "queda puxada pelo delivery", shape: "round" },
+      { label: "Novos clientes", value: String(rd.novos), delta: "+19%", up: true, hint: "vindos da vitrine pública", shape: "round" }
+    ].map(m => ({
+      ...m, ...shapes[m.shape],
+      deltaFg: m.up ? "#15803d" : "#b45309",
+      deltaBg: m.up ? "#f0fdf4" : "#fffbeb"
+    }));
+
+    const chShare = [
+      { label: "E-commerce", share: 0.46, color: accent },
+      { label: "PDV · salão", share: 0.38, color: "#15803d" },
+      { label: "Importação B2B", share: 0.16, color: "#b45309" }
+    ];
+    const channels = chShare.map(c => ({
+      ...c, iconBg: "color-mix(in oklab, " + c.color + " 12%, #ffffff)",
+      value: this.brl(rd.fat * c.share), pct: Math.round(c.share * 100) + "%"
+    }));
+
+    const st = { ok: { bg: "#f0fdf4", fg: "#15803d" }, warn: { bg: "#fffbeb", fg: "#b45309" }, bad: { bg: "#fef2f2", fg: "#b91c1c" }, info: { bg: accentSoft, fg: accentHover } };
+    const miniCards = [
+      { title: "Operação agora", lines: [
+        { k: "Mesas ocupadas", v: "6 de 14", ...st.info },
+        { k: "Pedidos em preparo", v: "34", ...st.warn },
+        { k: "Caixa aberto desde", v: "17:00", ...st.ok }
+      ] },
+      { title: "Catálogo", lines: [
+        { k: "Produtos ativos", v: "14", ...st.ok },
+        { k: "Sem estoque", v: "3", ...st.warn },
+        { k: "Rascunhos", v: "2", ...st.info }
+      ] },
+      { title: "Importação", lines: [
+        { k: "Arquivos hoje", v: "12", ...st.ok },
+        { k: "Linhas importadas", v: "38,4 mil", ...st.info },
+        { k: "Linhas com erro", v: "49", ...st.bad }
+      ] }
+    ];
+
+    // ---- Caixa ----
+    const methodShapes = { Dinheiro: "round", "Cartão de crédito": "square", "Cartão de débito": "square", Pix: "diamond" };
+    const methods = Object.keys(EXPECTED).map(k => {
+      const diff = Math.round((this.num(this.state.counted[k]) - EXPECTED[k]) * 100) / 100;
+      const exact = Math.abs(diff) < 0.005;
+      return {
+        label: k, ...shapes[methodShapes[k]],
+        expected: this.brl(EXPECTED[k]),
+        counted: this.state.counted[k],
+        diffLabel: exact ? "confere" : this.brl(diff),
+        diffFg: exact ? "#15803d" : diff < 0 ? "#b91c1c" : "#b45309",
+        onChange: e => this.setState(s => ({ counted: { ...s.counted, [k]: e.target.value.replace(/[^\d.,]/g, "").slice(0, 12) } }))
+      };
+    });
+    const totalExpected = Object.values(EXPECTED).reduce((a, b) => a + b, 0);
+    // soma em centavos inteiros: evita 6.199999999 e arredondamento acumulado
+    const totalCounted = Object.keys(EXPECTED).reduce((a, k) => a + Math.round(this.num(this.state.counted[k]) * 100), 0) / 100;
+    const totalDiff = Math.round((totalCounted - totalExpected) * 100) / 100;
+    const exact = Math.abs(totalDiff) < 0.005;
+    const small = Math.abs(totalDiff) <= 30;
+    const recon = {
+      status: this.state.closed ? "Turno fechado" : exact ? "Conferido" : small ? "Divergência pequena" : "Divergência",
+      diff: exact ? "R$ 0,00" : this.brl(totalDiff),
+      note: exact ? "Contagem bate com o sistema." : totalDiff < 0 ? "Falta dinheiro em relação ao esperado." : "Sobra em relação ao esperado.",
+      ...(this.state.closed ? st.info : exact ? st.ok : small ? st.warn : st.bad)
+    };
+    recon.panelBg = recon.bg;
+
+    const cashCards = [
+      { label: "Abertura", value: this.brl(OPENING), hint: "fundo de troco às 17:00", shape: "round", tag: "Turno noite", tagBg: accentSoft, tagFg: accentHover, iconBg: accentSoft, iconFg: accent },
+      { label: "Vendas do turno", value: this.brl(totalExpected), hint: "4 formas de pagamento", shape: "square", tag: "94 pedidos", tagBg: "#f0fdf4", tagFg: "#15803d", iconBg: "#f0fdf4", iconFg: "#15803d" },
+      { label: "Contado", value: this.brl(totalCounted), hint: "informado pelo operador", shape: "diamond", tag: null, iconBg: accentSoft, iconFg: accent },
+      { label: "Diferença", value: recon.diff, hint: recon.note, shape: "round", tag: recon.status, tagBg: recon.bg, tagFg: recon.fg, iconBg: recon.bg, iconFg: recon.fg, valueFg: recon.fg }
+    ].map(c => ({ ...c, ...shapes[c.shape], valueFg: c.valueFg || "#1e293b" }));
+
+    const movements = [
+      { label: "Abertura de caixa", at: "17:00 · Helena", value: this.brl(OPENING), ...st.info },
+      { label: "Vendas em dinheiro", at: "17:00 – 23:40", value: this.brl(EXPECTED.Dinheiro), ...st.ok },
+      { label: "Sangria para cofre", at: "21:12 · gerente", value: this.brl(-200), ...st.warn },
+      { label: "Troco reposto", at: "21:15 · gerente", value: this.brl(100), ...st.info },
+      { label: "Estorno pedido #10424", at: "17:44 · cancelado", value: this.brl(-156.4), ...st.bad }
+    ];
+
+    const OPERATORS = ["Helena Braga", "Bruno Ferraz", "Larissa Prado", "Caio Mendes"];
+    const ALL_CLOSINGS = Array.from({ length: 27 }, (_, i) => {
+      const dayNum = 22 - Math.floor(i / 2);
+      const shift = i % 2 === 0 ? "noite" : "tarde";
+      const diffCents = [0, -1200, 0, 850, -2850, 0, 0, -450, 3100][i % 9];
+      const kind = diffCents === 0 ? st.ok : Math.abs(diffCents) <= 1500 ? st.warn : st.bad;
+      return {
+        id: "f" + i,
+        day: String(dayNum).padStart(2, "0") + "/08 · turno " + shift,
+        who: OPERATORS[i % 4],
+        terminal: i % 3 === 0 ? "PDV-01 · salão" : i % 3 === 1 ? "PDV-02 · balcão" : "PDV-01 · salão",
+        total: this.brl(9800 + ((i * 733) % 6200)),
+        diff: diffCents === 0 ? "R$ 0,00" : this.brl(diffCents / 100),
+        label: diffCents === 0 ? "Conferido" : Math.abs(diffCents) <= 1500 ? "Divergência pequena" : "Divergência alta",
+        ...kind
+      };
+    });
+    const history = ALL_CLOSINGS.slice(0, 3);
+
+    const PER_PAGE = 8;
+    const histFiltered = this.state.histFilter === "Todos"
+      ? ALL_CLOSINGS
+      : ALL_CLOSINGS.filter(c => (this.state.histFilter === "Conferidos" ? c.label === "Conferido" : c.label !== "Conferido"));
+    const histPages = Math.max(1, Math.ceil(histFiltered.length / PER_PAGE));
+    const histPage = Math.min(this.state.histPage, histPages);
+    const histSlice = histFiltered.slice((histPage - 1) * PER_PAGE, histPage * PER_PAGE);
+
+    const shiftOpen = this.state.shiftOpen && !this.state.closed;
+    const userName = p.userName ?? "Helena Braga";
+
+    return {
+      nav, accent, accentHover, accentSoft, accentGlow, accentOnDark,
+      isDash, isCaixa, isHistory, isOther: !isDash && !inCaixa,
+      openHistory: () => this.setState({ caixaView: "historico", histPage: 1 }),
+      backToShift: () => this.setState({ caixaView: "turno" }),
+      histRows: histSlice,
+      histFilters: ["Todos", "Conferidos", "Com divergência"].map(f => ({
+        label: f,
+        bg: this.state.histFilter === f ? accent : "#ffffff",
+        fg: this.state.histFilter === f ? "#ffffff" : "#64748b",
+        select: () => this.setState({ histFilter: f, histPage: 1 })
+      })),
+      histCount: histFiltered.length + (histFiltered.length === 1 ? " fechamento" : " fechamentos"),
+      histRange: "Mostrando " + ((histPage - 1) * PER_PAGE + 1) + "–" + Math.min(histPage * PER_PAGE, histFiltered.length) + " de " + histFiltered.length,
+      histPageLabel: "Página " + histPage + " de " + histPages,
+      histPrevFg: histPage > 1 ? "#334155" : "#cbd5e1",
+      histNextFg: histPage < histPages ? "#334155" : "#cbd5e1",
+      histPrev: () => this.setState(s => ({ histPage: Math.max(1, s.histPage - 1) })),
+      histNext: () => this.setState(s => ({ histPage: Math.min(histPages, s.histPage + 1) })),
+      activeLabel: activeItem.label,
+      userName,
+      userRole: p.userRole ?? "ADMIN",
+      initials: userName.split(" ").filter(Boolean).slice(0, 2).map(s => s[0]).join("").toUpperCase(),
+      goImport: () => this.setState({ active: "importacao" }),
+
+      eyebrow: isDash ? "Resumo do dia" : isHistory ? "Auditoria" : isCaixa ? "Operação financeira" : "Roteiro",
+      pageTitle: isDash ? "Dashboard" : isHistory ? "Histórico de fechamentos" : isCaixa ? "Caixa" : activeItem.label,
+      pageLead: isDash
+        ? "Panorama de vendas, canais e operação. Números provisórios até o ReportService entrar no ar."
+        : isHistory
+        ? "Todos os turnos lacrados, com operador, terminal e a diferença apurada na conciliação."
+        : isCaixa
+          ? "Abertura, movimentos e fechamento com conciliação por forma de pagamento. A contagem é cega até o operador confirmar."
+          : "Tela construída em outra fase do roteiro.",
+
+      ranges: ["Hoje", "7 dias", "30 dias"].map(r => ({
+        label: r,
+        bg: this.state.range === r ? accent : "transparent",
+        fg: this.state.range === r ? "#ffffff" : "#64748b",
+        select: () => this.setState({ range: r })
+      })),
+      metrics, chart, channels, miniCards,
+      chartTitle: this.state.range === "Hoje" ? "Distribuição por hora" : "Últimos " + this.state.range,
+      chartPeak: this.brl(peak),
+      channelTotal: this.brl(rd.fat),
+
+      cashCards, methods, movements, history, recon,
+      expectedCash: this.brl(OPENING + EXPECTED.Dinheiro - 200 + 100 - 156.4),
+      shiftMeta: [
+        { k: "Operador", v: userName },
+        { k: "Aberto às", v: "17:00 · 23/08" },
+        { k: "Terminal", v: "PDV-01 · salão" },
+        { k: "Situação", v: this.state.closed ? "Fechado" : "Aberto" }
+      ],
+      locked: this.state.closed,
+      inputBg: this.state.closed ? "#f1f5f9" : "#f8fafc",
+      note: this.state.note,
+      setNote: e => this.setState({ note: e.target.value }),
+      confirming: this.state.confirming,
+      busy: this.state.busy,
+      confirmTitle: exact ? "Fechar o caixa deste turno?" : "Fechar com divergência de " + this.brl(totalDiff) + "?",
+      confirmNote: "O turno é lacrado e a contagem não pode mais ser alterada. A ação não pode ser desfeita.",
+      confirmCta: this.state.busy ? "Fechando…" : "Sim, fechar o turno",
+      confirmLines: [
+        { k: "Esperado no sistema", v: this.brl(totalExpected), fg: "#334155" },
+        { k: "Contado pelo operador", v: this.brl(totalCounted), fg: "#334155" },
+        { k: "Diferença apurada", v: exact ? "R$ 0,00" : this.brl(totalDiff), fg: recon.fg }
+      ],
+      askClose: () => this.setState({ confirming: true }),
+      cancelClose: () => this.setState({ confirming: false }),
+      backdropCancel: e => { if (e.target === e.currentTarget && !this.state.busy) this.setState({ confirming: false }); },
+      confirmClose: () => {
+        this.setState({ busy: true });
+        setTimeout(() => this.setState({ busy: false, confirming: false, closed: true }), 700);
+      },
+      closeShift: () => this.state.closed ? this.setState({ closed: false }) : this.setState({ confirming: true }),
+      closeBtnLabel: this.state.closed ? "Reabrir turno" : "Fechar caixa",
+      closeBtnBg: this.state.closed ? "#64748b" : accent,
+      closeBtnGlow: this.state.closed ? "rgba(100,116,139,0.28)" : accentGlow,
+      resetCount: () => this.setState({ counted: { Dinheiro: "", "Cartão de crédito": "", "Cartão de débito": "", Pix: "" }, closed: false }),
+
+      shiftDot: shiftOpen ? "#22c55e" : "#94a3b8",
+      shiftLabel: shiftOpen ? "Caixa aberto" : "Caixa fechado",
+      toggleShift: () => this.state.closed ? this.setState({ closed: false }) : this.setState({ confirming: true }),
+      deniedTitle: allowed ? activeItem.label : "Sem permissão",
+      deniedNote: allowed
+        ? "Tela construída em outra fase do roteiro — este arquivo cobre Caixa e Dashboard."
+        : "O papel " + role + " não tem acesso a esta área. Fale com um administrador do estabelecimento.",
+      shiftBtnLabel: this.state.closed ? "Abrir novo turno" : "Fechar turno",
+      shiftBtnBg: this.state.closed ? accent : "#ffffff",
+      shiftBtnFg: this.state.closed ? "#ffffff" : accent,
+      shiftBtnGlow: this.state.closed ? accentGlow : "rgba(2,6,23,0.05)"
+    };
+  }
+}
+
+</script>
+</body>
+</html>

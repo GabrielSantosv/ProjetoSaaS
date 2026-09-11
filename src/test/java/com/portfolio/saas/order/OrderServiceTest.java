@@ -2,6 +2,7 @@ package com.portfolio.saas.order;
 
 import com.portfolio.saas.catalog.Product;
 import com.portfolio.saas.catalog.ProductService;
+import com.portfolio.saas.catalog.ProductStatus;
 import com.portfolio.saas.catalog.dto.ProductResponse;
 import com.portfolio.saas.common.exception.BusinessException;
 import com.portfolio.saas.order.dto.CreateOrderRequest;
@@ -43,7 +44,7 @@ class OrderServiceTest {
         when(productService.getProductEntityById("prod-100")).thenReturn(product);
         when(productService.updateStock("prod-100", -2)).thenReturn(new ProductResponse(
                 "prod-100", "tenant-1", "SKU-100", "Cafeteira", new BigDecimal("250.00"), 8,
-                null, null, null, null
+                null, null, new BigDecimal("100.00"), ProductStatus.ACTIVE, null, null, null
         ));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);

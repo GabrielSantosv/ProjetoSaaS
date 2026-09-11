@@ -16,7 +16,7 @@ public class ImportJobError extends BaseEntity {
     @JoinColumn(name = "import_job_id", nullable = false)
     private ImportJob job;
 
-    @Column(name = "row_number", nullable = false)
+    @Column(name = "row_num", nullable = false)
     private Long rowNumber;
 
     @Column(name = "error_message", length = 500, nullable = false)

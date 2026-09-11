@@ -277,7 +277,7 @@ public class ProductImportService {
         TenantContext.setTenantId(job.getTenantId());
         try {
             jdbcTemplate.update(
-                    "INSERT INTO import_job_errors (id, tenant_id, import_job_id, row_number, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    "INSERT INTO import_job_errors (id, tenant_id, import_job_id, row_num, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                     UUID.randomUUID().toString(),
                     job.getTenantId(),
                     job.getId(),

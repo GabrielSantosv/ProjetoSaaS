@@ -1,5 +1,6 @@
 package com.portfolio.saas.catalog;
 
+import com.portfolio.saas.catalog.dto.ProductListResponse;
 import com.portfolio.saas.catalog.dto.ProductRequest;
 import com.portfolio.saas.catalog.dto.ProductResponse;
 import com.portfolio.saas.common.dto.PageResponse;
@@ -9,6 +10,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -40,6 +44,9 @@ public class ProductServiceImpl implements ProductService {
                 request.stockQuantity(),
                 category
         );
+        product.setCost(request.cost());
+        product.setStatus(request.status());
+        product.setDescription(request.description());
 
         product = productRepository.save(product);
         return ProductResponse.fromEntity(product);
@@ -47,23 +54,36 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ProductResponse> getProducts(String categoryId, String search, Pageable pageable) {
-        Page<Product> productPage;
-
+    public ProductListResponse getProducts(String categoryId, String search, String status, Pageable pageable) {
         boolean hasCategory = categoryId != null && !categoryId.isBlank();
         boolean hasSearch = search != null && !search.isBlank();
+        ProductStatus statusFilter = (status == null || status.isBlank()) ? null : ProductStatus.valueOf(status);
 
-        if (hasCategory && hasSearch) {
-            productPage = productRepository.searchProductsWithCategory(categoryId, search.trim(), pageable);
-        } else if (hasCategory) {
-            productPage = productRepository.findByCategoryId(categoryId, pageable);
-        } else if (hasSearch) {
-            productPage = productRepository.searchProducts(search.trim(), pageable);
-        } else {
-            productPage = productRepository.findAll(pageable);
+        Page<Product> productPage = productRepository.findFiltered(
+                hasCategory ? categoryId : null,
+                hasSearch ? search.trim() : null,
+                statusFilter,
+                pageable
+        );
+
+        PageResponse<ProductResponse> page = PageResponse.fromPage(productPage.map(ProductResponse::fromEntity));
+
+        // Contagens agregadas no banco, respeitando o mesmo filtro de busca/categoria da
+        // página atual — nunca inferir "total por status" a partir de uma página parcial.
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (ProductStatus s : ProductStatus.values()) {
+            counts.put(s.name(), 0L);
         }
+        long total = 0L;
+        for (ProductRepository.StatusCount statusCount : productRepository.countByStatusFiltered(
+                hasCategory ? categoryId : null,
+                hasSearch ? search.trim() : null)) {
+            counts.put(statusCount.getStatus().name(), statusCount.getCount());
+            total += statusCount.getCount();
+        }
+        counts.put("TOTAL", total);
 
-        return PageResponse.fromPage(productPage.map(ProductResponse::fromEntity));
+        return new ProductListResponse(page, counts);
     }
 
     @Override
@@ -94,11 +114,16 @@ public class ProductServiceImpl implements ProductService {
             category = categoryService.getCategoryEntityById(request.categoryId());
         }
 
+        // stockQuantity é ignorado aqui de propósito: ajuste de estoque passa sempre por
+        // updateStock()/adjustStockAtomic, que é atômico. Aplicar aqui reabriria a race
+        // condition de lost update que esse endpoint atômico foi criado para eliminar.
         product.setSku(request.sku());
         product.setName(request.name());
         product.setPrice(request.price());
-        product.setStockQuantity(request.stockQuantity());
         product.setCategory(category);
+        product.setCost(request.cost());
+        product.setStatus(request.status());
+        product.setDescription(request.description());
 
         product = productRepository.save(product);
         return ProductResponse.fromEntity(product);

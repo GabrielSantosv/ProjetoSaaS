@@ -1,6 +1,7 @@
 package com.portfolio.saas.catalog.dto;
 
 import com.portfolio.saas.catalog.Product;
+import com.portfolio.saas.catalog.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +15,9 @@ public record ProductResponse(
         Integer stockQuantity,
         String categoryId,
         String categoryName,
+        BigDecimal cost,
+        ProductStatus status,
+        String description,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -31,6 +35,9 @@ public record ProductResponse(
                 product.getStockQuantity(),
                 catId,
                 catName,
+                product.getCost(),
+                product.getStatus(),
+                product.getDescription(),
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );

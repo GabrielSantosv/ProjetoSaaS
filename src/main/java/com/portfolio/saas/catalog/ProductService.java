@@ -1,15 +1,15 @@
 package com.portfolio.saas.catalog;
 
+import com.portfolio.saas.catalog.dto.ProductListResponse;
 import com.portfolio.saas.catalog.dto.ProductRequest;
 import com.portfolio.saas.catalog.dto.ProductResponse;
-import com.portfolio.saas.common.dto.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface ProductService {
 
     ProductResponse createProduct(ProductRequest request);
 
-    PageResponse<ProductResponse> getProducts(String categoryId, String search, Pageable pageable);
+    ProductListResponse getProducts(String categoryId, String search, String status, Pageable pageable);
 
     ProductResponse getProductById(String id);
 

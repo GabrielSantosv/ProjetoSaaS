@@ -1,9 +1,9 @@
 package com.portfolio.saas.catalog;
 
+import com.portfolio.saas.catalog.dto.ProductListResponse;
 import com.portfolio.saas.catalog.dto.ProductRequest;
 import com.portfolio.saas.catalog.dto.ProductResponse;
 import com.portfolio.saas.catalog.dto.StockAdjustmentRequest;
-import com.portfolio.saas.common.dto.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,6 +39,7 @@ public class ProductController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SELLER')")
     @Operation(summary = "Criar Produto", description = "Cadastra um novo produto no catálogo do tenant autenticado")
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse response = productService.createProduct(request);
@@ -46,12 +48,13 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Listar Produtos Paginados", description = "Retorna produtos com suporte a paginação, busca textual por nome/SKU e filtro por categoria")
-    public ResponseEntity<PageResponse<ProductResponse>> getProducts(
+    public ResponseEntity<ProductListResponse> getProducts(
             @Parameter(description = "ID da categoria para filtro") @RequestParam(required = false) String categoryId,
             @Parameter(description = "Termo de busca por nome ou SKU") @RequestParam(required = false) String search,
+            @Parameter(description = "Status do produto para filtro (ACTIVE, OUT_OF_STOCK, DRAFT, INACTIVE)") @RequestParam(required = false) String status,
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return ResponseEntity.ok(productService.getProducts(categoryId, search, pageable));
+        return ResponseEntity.ok(productService.getProducts(categoryId, search, status, pageable));
     }
 
     @GetMapping("/{id}")
@@ -61,6 +64,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SELLER')")
     @Operation(summary = "Atualizar Produto", description = "Atualiza os dados de um produto existente")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable String id,
@@ -70,6 +74,7 @@ public class ProductController {
     }
 
     @PatchMapping("/{id}/stock")
+    @PreAuthorize("hasAnyRole('ADMIN','SELLER')")
     @Operation(summary = "Ajustar Estoque", description = "Incrementa ou decrementa a quantidade em estoque de um produto (ex: +10 ou -5)")
     public ResponseEntity<ProductResponse> adjustStock(
             @PathVariable String id,
@@ -79,6 +84,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Excluir Produto", description = "Remove um produto do catálogo do tenant")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id) {
         productService.deleteProduct(id);

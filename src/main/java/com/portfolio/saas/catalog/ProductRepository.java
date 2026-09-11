@@ -8,10 +8,22 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, String> {
+
+    interface StatusCount {
+        ProductStatus getStatus();
+        Long getCount();
+    }
+
+    @Query("SELECT p.status as status, COUNT(p) as count FROM Product p " +
+            "WHERE (:categoryId IS NULL OR p.category.id = :categoryId) " +
+            "AND (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "GROUP BY p.status")
+    List<StatusCount> countByStatusFiltered(@Param("categoryId") String categoryId, @Param("search") String search);
 
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdScoped(@Param("id") String id);
@@ -27,11 +39,14 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     boolean existsByCategoryId(String categoryId);
 
-    Page<Product> findByCategoryId(String categoryId, Pageable pageable);
-
-    @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))")
-    Page<Product> searchProducts(@Param("search") String search, Pageable pageable);
-
-    @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Product> searchProductsWithCategory(@Param("categoryId") String categoryId, @Param("search") String search, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE " +
+            "(:categoryId IS NULL OR p.category.id = :categoryId) AND " +
+            "(:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))) AND " +
+            "(:status IS NULL OR p.status = :status)")
+    Page<Product> findFiltered(
+            @Param("categoryId") String categoryId,
+            @Param("search") String search,
+            @Param("status") ProductStatus status,
+            Pageable pageable
+    );
 }
