@@ -1,30 +1,44 @@
-# SaaS de Gestão de Comércio
+# SaaS de Gestão de Comércio & E-commerce
 
-Sistema de gestão para comércio e e-commerce em arquitetura monolítica modular, com foco em multi-tenancy, segurança, controle operacional e integridade de dados. O projeto combina autenticação JWT, contexto de tenant, fluxo de pedidos, PDV, caixa, pagamentos e processamento massivo de catálogo com concorrência segura.
+Plataforma de gestão para quem vende — loja física, online, ou as duas coisas ao mesmo tempo. Catálogo de produtos, carrinho e checkout de e-commerce, PDV com mesas/comandas, e fechamento de caixa com conciliação de pagamentos. Multi-tenant: várias empresas usam o mesmo sistema, cada uma com seus dados completamente isolados das outras.
 
-## Visão geral
+Construído como monólito modular — decisão consciente de arquitetura, não limitação. O objetivo deste projeto é demonstrar domínio de regra de negócio complexa e centralizada, e concorrência real em Java, sem se apoiar em coordenação distribuída entre serviços.
 
-Este projeto foi pensado para representar um sistema realista de gestão comercial em um ambiente SaaS, com isolamento de dados por loja/empresa e regras de negócio alinhadas a operações de varejo, atendimento físico e vendas online.
+## Índice
 
-Entre os principais pontos da solução estão:
+- [Stack técnica](#stack-técnica)
+- [Arquitetura](#arquitetura)
+- [Multi-tenancy](#multi-tenancy)
+- [Módulos](#módulos)
+- [O diferencial: importação paralela com Virtual Threads](#o-diferencial-importação-paralela-com-virtual-threads)
+- [Concorrência: decisões de engenharia e o que já quebrou](#concorrência-decisões-de-engenharia-e-o-que-já-quebrou)
+- [Como rodar localmente](#como-rodar-localmente)
+- [Testes](#testes)
+- [Limitações conhecidas e próximos passos](#limitações-conhecidas-e-próximos-passos)
+- [Benchmark](#benchmark)
 
-- isolamento de dados por tenant
-- autenticação stateless com JWT
-- concorrência correta em estoque e transações compartilhadas
-- fluxo de pedidos e pagamentos com validações de integridade
-- PDV com mesas/comandas e fechamento de caixa
-- importação de produtos em massa com processamento em chunks e Virtual Threads
-- testes automatizados com perfil de banco em memória
+## Stack técnica
+
+| Camada | Tecnologia |
+|---|---|
+| Linguagem | Java 21 LTS |
+| Framework | Spring Boot 3.3.4 (Data JPA, Security, Validation, JDBC) |
+| Banco (dev/prod) | MySQL 8.4 via Docker Compose |
+| Banco (testes) | H2 em memória (modo MySQL) |
+| Migrations | Flyway |
+| Autenticação | JWT stateless (JJWT 0.12.6) |
+| Resiliência | Resilience4j |
+| Documentação de API | SpringDoc OpenAPI / Swagger UI |
+| Testes | JUnit 5, Mockito, AssertJ, MockMvc |
 
 ## Arquitetura
 
-A aplicação adota uma arquitetura monolítica modular, mantendo separação por domínio e evitando acoplamento técnico desnecessário entre módulos.
+### Visão geral (deployment)
 
 ```mermaid
-graph TD
-    Client[Cliente / Frontend] --> App[Spring Boot Application]
-
-    subgraph Dominios
+graph TB
+    Web[Frontend web] --> Mono
+    subgraph Mono["SaaS Monólito · Spring Boot · 1 processo"]
         Auth[auth]
         Tenant[tenant]
         Catalog[catalog]
@@ -33,193 +47,129 @@ graph TD
         Pdv[pdv]
         Cashier[cashier]
         Payment[payment]
-        Import[imports]
+        Importing[importing]
     end
-
-    App --> Auth
-    App --> Tenant
-    App --> Catalog
-    App --> Order
-    App --> Ecommerce
-    App --> Pdv
-    App --> Cashier
-    App --> Payment
-    App --> Import
-
-    App --> DB[(MySQL 8.4 / H2 em testes)]
+    Mono --> DB[(MySQL)]
 ```
 
-### Módulos principais
+Um único deployable: um processo Spring Boot, um único banco. Não há rede entre módulos — toda comunicação interna é chamada de método direta, sem mensageria. Isso contrasta com uma arquitetura de microsserviços coreografada via eventos (SNS/SQS) que também faz parte do meu portfólio, como ponto de comparação de trade-offs arquiteturais.
 
-- auth: autenticação, autorização e geração de JWT
-- tenant: contexto do tenant e regra de isolamento por empresa
-- catalog: produtos, categorias e controle de estoque
-- order: pedidos e regras de composição do pedido
-- ecommerce: fluxo de compra digital e carrinho
-- pdv: mesas, comandas, atendimento e fechamento de mesa
-- cashier: abertura/fechamento do caixa e conciliação
-- payment: pagamentos e validação de saldos e pagamentos pendentes
-- imports: upload e processamento de CSV para catálogo em lote
+### Dependências entre módulos
 
-## Regras de negócio e integridade
+```mermaid
+graph LR
+    Auth[auth] -- valida token --> Tenant[tenant]
+    Tenant -- popula contexto --> Catalog[catalog]
+    Tenant -- popula contexto --> Order[order]
+    Catalog -- consulta produto --> Order
+    Order -- gera pedido --> Ecommerce[ecommerce]
+    Order -- gera pedido --> Pdv[pdv]
+    Order -- solicita cobrança --> Payment[payment]
+    Payment -- confirma pagamento --> Cashier[cashier]
+    Order -- fecha pedido --> Cashier
+    Importing[importing] -- upsert em lote --> Catalog
+```
 
-### Multi-tenancy
+`importing` é o único módulo que escreve em `catalog` fora do fluxo normal de CRUD — de propósito, para manter a fronteira de concorrência isolada num só lugar. `ecommerce` e `pdv` nunca se comunicam entre si diretamente; ambos delegam para `order`, que concentra a regra de negócio compartilhada entre canais de venda.
 
-A aplicação exige que o tenant do usuário seja carregado a partir do token JWT e propagado para todas as operações de banco. O contexto é tratado de forma segura via `TenantContext`, evitando que uma operação absorva dados de outro cliente.
+### Pipeline da importação paralela
 
-A estrutura da solução reforça que:
+```mermaid
+graph TD
+    C[Cliente] -- upload CSV --> IC[ImportController]
+    IC -- cria job --> IJ[ImportJob: PENDING]
+    IJ -- 202 Accepted --> C
+    IJ -- dispara async --> CR[CsvChunkReader]
+    CR -- chunk ~500 linhas --> W1[Worker · Virtual Thread]
+    CR -- chunk ~500 linhas --> W2[Worker · Virtual Thread]
+    CR -- chunk ~500 linhas --> W3[Worker · Virtual Thread]
+    W1 -- upsert em lote --> DB[(MySQL)]
+    W2 -- upsert em lote --> DB
+    W3 -- upsert em lote --> DB
+    W1 -- erro isolado --> AG[Contadores atômicos + erros]
+    W2 -- erro isolado --> AG
+    W3 -- erro isolado --> AG
+    AG -- consolida --> IJ2[ImportJob: COMPLETED/FAILED]
+    C -- GET status polling --> IJ2
+```
 
-- o tenant nunca é aceito como parâmetro externo do cliente
-- as entidades base carregam o tenant de forma explícita
-- consultas e alterações respeitam o tenant ativo em todas as camadas
+## Multi-tenancy
 
-### Concorrência e consistência
+Isolamento estrito via `@TenantId` do Hibernate 6.4+, centralizado na superclasse `BaseEntity`. O `tenantId` é extraído do JWT por um filtro (`TenantFilter`), armazenado num `TenantContext` (ThreadLocal) por requisição, e resolvido para o Hibernate via um `CurrentTenantIdentifierResolver` dedicado — nunca aceito diretamente do payload ou query string do cliente.
 
-O projeto foi desenvolvido com atenção ao problema clássico de read-modify-write e à corrida de concorrência em cenários compartilhados.
+O `@PrePersist` da `BaseEntity` falha explicitamente (`IllegalStateException`) se qualquer entidade tentar ser persistida sem um tenant ativo no contexto — preferindo falha alta e imediata a um fallback silencioso que mascare um bug de propagação de contexto.
 
-Exemplos incorporados na lógica:
+Um teste de integração dedicado (`MultiTenancyDataIsolationTest`) prova isolamento na leitura, não só na escrita: cria dados para dois tenants diferentes e confirma que um nunca enxerga dados do outro, mesmo em consultas que não filtram tenant explicitamente no código da aplicação.
 
-- ajuste atômico de estoque com validação no banco
-- bloqueio/serialização em operações sensíveis de pagamento
-- versão otimista em estado compartilhado de mesas/PDV
-- processamento de importação em chunks para reduzir pressão de memória
-- atualizações finais de status do job persistidas de forma consistente
+**Atenção especial em processamento assíncrono:** Virtual Threads não herdam o `ThreadLocal` da requisição que as originou. Cada worker do módulo de importação propaga o `tenantId` manualmente no início da sua execução — e, como o upsert em massa usa SQL puro via `JdbcTemplate` (não JPA), o filtro automático do Hibernate não se aplica ali; o `tenant_id` é passado explicitamente como parâmetro em cada instrução.
 
-### Importação em massa
+## Módulos
 
-O módulo de importação foi projetado como fluxo robusto para cargas grandes:
-
-- upload de arquivo com persistência local antes do retorno
-- leitura em chunks para processamento incremental
-- execução paralela com Virtual Threads
-- contadores por job e isolamento de erros por linha
-- persistência de erros para diagnóstico sem abortar o restante da carga
-- regra de negócio de recebimento de quantidade: soma ao estoque atual
-
-## Stack tecnológica
-
-| Componente | Tecnologia |
+| Módulo | Responsabilidade |
 |---|---|
-| Linguagem | Java 21 |
-| Framework | Spring Boot 3.3.4 |
-| Persistência | Spring Data JPA + JDBC |
-| Banco de produção | MySQL 8.4 |
-| Banco de testes | H2 em memória |
-| Migrations | Flyway |
-| Segurança | Spring Security + JWT |
-| API docs | Springdoc OpenAPI |
-| Concorrência | Virtual Threads (Java 21) |
-| Testes | JUnit 5, AssertJ, MockMvc, Spring Boot Test |
-| Containers | Docker Compose |
+| `auth` | Registro de tenant + usuário administrador, login, emissão e validação de JWT |
+| `tenant` | Entidade raiz de isolamento, contexto de tenant por requisição |
+| `catalog` | Produtos e categorias, com ajuste de estoque atômico |
+| `order` | Regra de pedido compartilhada entre canais de venda (e-commerce e PDV) |
+| `ecommerce` | Carrinho e checkout |
+| `pdv` | Venda direta no caixa e mesas/comandas persistidas |
+| `cashier` | Abertura/fechamento de caixa com reconciliação de pagamentos |
+| `payment` | Registro de pagamento vinculado ao ciclo de vida do pedido |
+| `importing` | Importação massiva de catálogo com processamento paralelo (o diferencial técnico do projeto) |
+| `common` | Entidade base, tratamento de exceções centralizado, DTOs compartilhados |
 
-## Pré-requisitos
+## O diferencial: importação paralela com Virtual Threads
 
-- Java 21
-- Maven Wrapper incluído no projeto
-- Docker e Docker Compose
+Um lojista sobe uma planilha CSV com milhares de produtos. Em vez de processar linha a linha:
 
-## Execução local
+1. O arquivo é persistido em disco de forma síncrona antes da resposta HTTP retornar (`202 Accepted` com o id do job) — evitando depender do arquivo temporário do multipart, que não sobrevive ao fim da requisição
+2. O processamento roda de forma assíncrona, lendo o arquivo em streaming e dividindo em chunks de ~500 linhas
+3. Cada chunk é processado numa **Virtual Thread** (`Executors.newVirtualThreadPerTaskExecutor()`) — permitindo milhares de tarefas concorrentes sem o custo de memória de threads de sistema operacional
+4. A persistência usa `INSERT ... ON DUPLICATE KEY UPDATE` em lote via `JdbcTemplate.batchUpdate` — atômico por construção no nível do banco, eliminando qualquer janela de corrida entre chunks concorrentes tentando o mesmo SKU
+5. Falha de uma linha (ou de um lote inteiro, por erro de banco) é isolada: registrada individualmente, sem derrubar o processamento dos demais chunks
+6. Erros transitórios de banco (deadlock, timeout) acionam retry automático via Resilience4j — restrito estritamente a esse tipo de erro, nunca a falha de validação de negócio
+7. Contadores de progresso (`processedRows`, `successCount`, `errorCount`) são atualizados via `UPDATE ... SET coluna = coluna + ?` — incremento atômico no banco, permitindo consulta de progresso real durante o processamento, não só ao final
 
-### 1. Subir infraestrutura
+## Concorrência: decisões de engenharia e o que já quebrou
+
+Esse projeto foi construído com revisão técnica ativa em cada fase — e vale documentar os problemas reais encontrados no caminho, porque a forma como foram corrigidos diz mais sobre a engenharia do projeto do que qualquer feature isolada.
+
+- **Ajuste de estoque:** a primeira versão lia o valor, somava em Java e salvava — um clássico *lost update* sob concorrência. Corrigido com `UPDATE` atômico condicional no banco, verificando linhas afetadas.
+- **Checkout com múltiplos itens:** precisava garantir que, se um item do carrinho falhasse por falta de estoque, os itens já debitados antes dele revertessem. Provado com um teste que força a ordem de processamento e confirma reversão determinística — não um teste que "passa por acaso" dependendo da ordem de iteração de um `Map`.
+- **Fechamento concorrente de mesa (PDV):** duas tentativas de fechar a mesma comanda ao mesmo tempo podiam gerar dois pedidos e debitar estoque em dobro. Resolvido com lock otimista (`@Version` + `OPTIMISTIC_FORCE_INCREMENT`) e provado com um teste de duas threads reais disputando o mesmo recurso via `CountDownLatch`.
+- **Abertura concorrente de caixa:** duas aberturas simultâneas para o mesmo tenant podiam coexistir. Resolvido com defesa em profundidade — lock pessimista na linha do tenant *e* uma constraint de unicidade no banco via coluna gerada — e também provado com concorrência real disparada via HTTP.
+- **Upsert da importação em massa:** a primeira versão fazia `SELECT` seguido de `INSERT`/`UPDATE` em código de aplicação — reintroduzindo exatamente a mesma classe de corrida, só que entre Virtual Threads. Substituído por `INSERT ... ON DUPLICATE KEY UPDATE`, atômico por construção — a única correção deste projeto que elimina a corrida sem precisar de um teste de concorrência para prová-la, porque a garantia vem do próprio motor do banco.
+
+O critério usado em todo o projeto: um teste que passa não prova ausência de condição de corrida — só prova a lógica sequencial. Onde a atomicidade importa de verdade, o teste precisa forçar concorrência real.
+
+## Como rodar localmente
 
 ```bash
+# subir o banco
 docker compose up -d
-```
 
-### 2. Rodar a aplicação
-
-Linux/macOS:
-
-```bash
+# rodar a aplicação
 ./mvnw spring-boot:run
+
+# rodar a suíte de testes completa
+./mvnw clean test
 ```
 
-Windows:
-
-```powershell
-./mvnw.cmd spring-boot:run
-```
-
-A aplicação será exposta em:
-
-- http://localhost:8080
-
-### 3. Acesso à documentação da API
-
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- OpenAPI: http://localhost:8080/v3/api-docs
+Documentação interativa da API disponível em `/swagger-ui.html` após subir a aplicação.
 
 ## Testes
 
-O projeto usa perfil de teste com H2 para garantir execução isolada e consistente em CI/local.
+Cobertura em três camadas: unitários (regra de negócio isolada com Mockito), integração (fluxo completo via `MockMvc` contra H2), e concorrência real (múltiplas threads reais disputando o mesmo recurso via `CountDownLatch`, usadas especificamente onde atomicidade não pode ser assumida por simples leitura de código).
 
-Execução completa:
+## Limitações conhecidas e próximos passos
 
-```bash
-./mvnw test
-```
+Transparência sobre o que ainda não está pronto, em vez de esconder:
 
-Windows:
+- **Pagamento concorrente:** dois pagamentos parciais simultâneos para o mesmo pedido ainda podem, em teoria, somar além do total devido — falta aplicar o mesmo padrão de lock já usado na abertura de caixa, desta vez na linha do `Order`
+- **Relatórios:** métricas agregadas por período, canal e produtos mais vendidos ainda não foram implementadas
+- **Granularidade de erro no import em lote:** uma falha de banco isolada num sub-lote de 100 linhas marca o sub-lote inteiro como erro, não só a linha problemática — trade-off consciente em favor de performance (`rewriteBatchedStatements`), documentado aqui em vez de deixado implícito
+- **Frontend:** o projeto é intencionalmente API-only neste momento, testável via Swagger UI
 
-```powershell
-./mvnw.cmd test
-```
+## Benchmark
 
-Validação realizada neste ambiente:
-
-- comando executado: ./mvnw.cmd test -q
-- resultado verificado: exit code 0
-
-Isso confirma que a suíte atual está passando no ambiente local de desenvolvimento/validação.
-
-## Boas práticas aplicadas
-
-- separação por domínio e responsabilidade
-- transações explícitas em operações críticas
-- contexto de tenant propagado com segurança
-- validação de regras antes da persistência
-- uso de SQL atômico em pontos sensíveis de estoque
-- processamento em lote com isolamento de falhas por linha
-- testes focados em comportamento real e integração
-
-## Benchmarking e performance
-
-Esta aplicação foi desenhada para priorizar correção e integridade antes de throughput bruto, mas o projeto já incorpora arquitetura e padrões que favorecem desempenho em cenários de carga real:
-
-- processamento em chunks para reduzir memória e picos de GC
-- Virtual Threads para paralelizar importações e tarefas longas
-- consultas atômicas para operações de estoque e atualização de estado
-- redução de acoplamento e bloqueios desnecessários em camada de serviço
-
-### Estratégia recomendada de benchmark
-
-Para medir desempenho real, o ideal é executar cenários em ambiente próximo ao de produção, com dados representativos:
-
-1. importação de catálogo de 5k, 50k e 500k linhas
-2. concorrência em estoque para cenários de múltiplos clientes simultâneos
-3. abertura/fechamento de caixa e pedidos em alta concorrência
-4. carga de PDV e mesas/comandas em operações de leitura e escrita
-
-### Comandos sugeridos
-
-```bash
-./mvnw test
-```
-
-```bash
-docker compose up -d
-```
-
-```bash
-./mvnw spring-boot:run
-```
-
-> Os benchmarks devem ser coletados em um ambiente controlado e repetível, com métricas de tempo de resposta, throughput, uso de CPU e consumo de memória. Não há números de produção aqui porque o objetivo desta documentação é registrar a estratégia, padrões e validação de comportamento, e não inventar resultados sem medição real.
-
-## Visão de maturidade
-
-O projeto já incorpora uma base sólida para um SaaS comercial de porte médio, com foco em integridade operacional, segurança por tenant e execução de processos em alta escala. O alinhamento com Java 21, Spring Boot, banco relacional e processamento paralelo torna a solução adequada tanto para estágio de validação técnica quanto para evolução contínua de novos módulos e APIs.
-
-## Conclusão
-
-A entrega atual representa uma base funcional e robusta para gestão comercial, cobrindo autenticação, tenancy, pedidos, PDV, caixa, pagamentos e importação em lote. O diferencial principal está na combinação de regras de negócio firmes, tratamento de concorrência real e execução paralela sem comprometer a consistência do sistema.
+*A preencher após execução real: tempo de importação sequencial vs. paralela para um volume comparável de produtos, com o número de workers utilizado.*
