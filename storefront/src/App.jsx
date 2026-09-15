@@ -1,96 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ImageSlot from './components/ImageSlot';
 import { cartCount as calcCartCount, cartSubtotal, shippingCost, shouldShowSummary } from './utils/cart.js';
-
-const CATALOG = [
-  {
-    id: 'burrata',
-    name: 'Salada de burrata e tomates de estação',
-    cat: 'Entradas',
-    price: 52,
-    short: 'Burrata cremosa, tomates confitados e manjericão fresco.',
-    long: 'Burrata italiana servida com tomates de estação confitados devagar em azeite, manjericão colhido no dia e uma pitada de flor de sal. Chega pronta para servir, em porção para duas pessoas.'
-  },
-  {
-    id: 'risoto',
-    name: 'Risoto de cogumelos frescos',
-    cat: 'Pratos',
-    price: 59,
-    short: 'Arbóreo, mix de cogumelos e parmesão 24 meses.',
-    long: 'Arroz arbóreo cozido no caldo de legumes com shitake, shimeji e paris salteados na manteiga, finalizado com parmesão maturado 24 meses. Acompanha instruções para o ponto ideal em casa.'
-  },
-  {
-    id: 'moqueca',
-    name: 'Moqueca de peixe branco',
-    cat: 'Pratos',
-    price: 98,
-    short: 'Leite de coco, dendê e pimentões, sem pimenta.',
-    long: 'Peixe branco fresco cozido no leite de coco com pimentões, coentro e um toque de dendê. Vem com arroz de coco à parte, em porção generosa para duas pessoas.'
-  },
-  {
-    id: 'malbec',
-    name: 'Malbec de altitude, safra 2021',
-    cat: 'Vinhos',
-    price: 148,
-    short: 'Mendoza · encorpado, notas de ameixa e cacau.',
-    long: 'Malbec cultivado a 1.200 metros em Mendoza. Encorpado, com taninos redondos, notas de ameixa madura e cacau. Combina com carnes vermelhas e massas de molho intenso.'
-  },
-  {
-    id: 'focaccia',
-    name: 'Focaccia de romeiro e azeite',
-    cat: 'Padaria',
-    price: 34,
-    short: 'Fermentação natural de 24 horas.',
-    long: 'Massa de fermentação natural descansada por 24 horas, coberta com romeiro fresco, azeite extravirgem e flor de sal. Assada na manhã da entrega.'
-  },
-  {
-    id: 'gateau',
-    name: 'Petit gâteau de chocolate 70%',
-    cat: 'Sobremesas',
-    price: 29.45,
-    short: 'Recheio cremoso, dois na embalagem.',
-    long: 'Bolo de chocolate 70% com centro cremoso, pronto para ir ao forno por seis minutos. A embalagem traz duas unidades e uma porção de creme inglês.'
-  },
-  {
-    id: 'fettuccine',
-    name: 'Fettuccine fresco ao pesto',
-    cat: 'Pratos',
-    price: 62.5,
-    short: 'Massa do dia, pesto de manjericão e pinoli.',
-    long: 'Fettuccine feito na casa no mesmo dia da entrega, acompanhado de pesto de manjericão com pinoli tostado e pecorino. Cozinha em três minutos.'
-  },
-  {
-    id: 'cheesecake',
-    name: 'Cheesecake de frutas vermelhas',
-    cat: 'Sobremesas',
-    price: 32,
-    short: 'Base de castanhas e calda da estação.',
-    long: 'Cheesecake cremoso sobre base de castanhas, coberto com calda de frutas vermelhas da estação levemente ácida. Serve quatro fatias.'
-  },
-  {
-    id: 'azeite',
-    name: 'Azeite extravirgem primeira safra',
-    cat: 'Mercearia',
-    price: 76,
-    short: 'Colheita antecipada, acidez 0,2%.',
-    long: 'Azeite de colheita antecipada, extraído a frio, com acidez de 0,2% e final levemente picante. Garrafa de 500 ml em vidro escuro.'
-  }
-];
-
-let orderSequence = 10430;
+import {
+  getOrCreateCustomerId,
+  fetchCatalog,
+  fetchCart,
+  addCartItem,
+  updateCartItemQuantity,
+  removeCartItem,
+  updateCartDelivery,
+  checkout as apiCheckout,
+  toUiProduct,
+  SHIPPING_METHOD_CODES,
+  PAYMENT_METHOD_CODES,
+  paymentMethodLabel
+} from './utils/api.js';
 
 export default function App() {
   const [view, setView] = useState('grid'); // 'grid' | 'detail' | 'cart' | 'checkout' | 'done'
   const [cat, setCat] = useState('Tudo');
   const [query, setQuery] = useState('');
-  const [current, setCurrent] = useState('risoto');
+  const [current, setCurrent] = useState(null);
   const [qty, setQty] = useState(1);
-  const [cart, setCart] = useState({ burrata: 1, malbec: 1 });
+  const [cart, setCart] = useState({});
   const [ship, setShip] = useState('Entrega padrão');
   const [pay, setPay] = useState('Pix');
   const [busy, setBusy] = useState(false);
   const [buyer, setBuyer] = useState({ name: '', email: '', address: '', phone: '' });
   const [order, setOrder] = useState(null);
+
+  const [customerId] = useState(() => getOrCreateCustomerId());
+  const [catalog, setCatalog] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState(null);
+  const [addBusyIds, setAddBusyIds] = useState({});
+  const [itemBusyIds, setItemBusyIds] = useState({});
+  const [actionError, setActionError] = useState(null);
+  const checkoutInFlight = useRef(false);
+
+  const syncCartFromResponse = response => {
+    setCart(Object.fromEntries((response?.items || []).map(i => [i.productId, i.quantity])));
+  };
+
+  // Carga inicial do catálogo — AbortController cancela a requisição anterior se o efeito
+  // remontar (StrictMode) ou o componente desmontar antes da resposta chegar.
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalogLoading(true);
+    setCatalogError(null);
+
+    fetchCatalog({ signal: controller.signal })
+      .then(page => setCatalog((page.content || []).map(toUiProduct)))
+      .catch(err => {
+        if (err.name === 'AbortError') return;
+        setCatalogError(err.message || 'Não foi possível carregar os produtos agora.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCatalogLoading(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  // Carga inicial do carrinho do servidor — mesmo cuidado de cancelamento do efeito acima.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchCart(customerId, { signal: controller.signal })
+      .then(response => {
+        if (!controller.signal.aborted) syncCartFromResponse(response);
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return;
+        setActionError(err.message || 'Não foi possível carregar seu carrinho agora.');
+      });
+
+    return () => controller.abort();
+  }, [customerId]);
 
   const accent = '#2563eb';
   const mix = (pct, other) => `color-mix(in oklab, ${accent} ${pct}%, ${other})`;
@@ -99,47 +85,77 @@ export default function App() {
 
   const brl = n => 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const addToCart = (id, n) => {
-    setCart(prev => ({
-      ...prev,
-      [id]: (prev[id] || 0) + n
-    }));
+  const performAddToCart = async (id, n, { navigateToCart } = {}) => {
+    if (addBusyIds[id]) return;
+    setAddBusyIds(prev => ({ ...prev, [id]: true }));
+    setActionError(null);
+    try {
+      const response = await addCartItem(customerId, id, n);
+      syncCartFromResponse(response);
+      if (navigateToCart) {
+        setQty(1);
+        setView('cart');
+      }
+    } catch (err) {
+      setActionError(err.message || 'Não foi possível adicionar este item ao carrinho.');
+    } finally {
+      setAddBusyIds(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
   };
 
-  const setItemQty = (id, n) => {
-    setCart(prev => {
-      const next = { ...prev };
-      if (n <= 0) {
+  const addToCart = (id, n) => performAddToCart(id, n);
+
+  // Um pedido de rede por item por vez — clique repetido em +/- enquanto a requisição
+  // anterior ainda está em voo é ignorado, então nunca há respostas fora de ordem.
+  const setItemQty = async (id, n) => {
+    if (itemBusyIds[id]) return;
+    setItemBusyIds(prev => ({ ...prev, [id]: true }));
+    setActionError(null);
+    try {
+      const response = n <= 0
+        ? await removeCartItem(customerId, id)
+        : await updateCartItemQuantity(customerId, id, Math.min(20, n));
+      syncCartFromResponse(response);
+    } catch (err) {
+      setActionError(err.message || 'Não foi possível atualizar o carrinho agora.');
+    } finally {
+      setItemBusyIds(prev => {
+        const next = { ...prev };
         delete next[id];
-      } else {
-        next[id] = Math.min(20, n);
-      }
-      return next;
-    });
+        return next;
+      });
+    }
   };
 
   const catList = ['Tudo', 'Pratos', 'Entradas', 'Sobremesas', 'Vinhos', 'Padaria', 'Mercearia'];
   const q = query.trim().toLowerCase();
 
-  const visibleProducts = CATALOG.filter(
+  const visibleProducts = catalog.filter(
     x => (cat === 'Tudo' || x.cat === cat) && (!q || x.name.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q))
   );
 
-  const curProduct = CATALOG.find(x => x.id === current) || CATALOG[0];
+  const curProduct = catalog.find(x => x.id === current) || null;
 
   const cartIds = Object.keys(cart);
-  const cartLines = cartIds.map(id => {
-    const x = CATALOG.find(c => c.id === id);
-    const n = cart[id];
-    return {
-      ...x,
-      qty: n,
-      total: brl(x.price * n)
-    };
-  });
+  const cartLines = cartIds
+    .map(id => {
+      const x = catalog.find(c => c.id === id);
+      if (!x) return null;
+      const n = cart[id];
+      return {
+        ...x,
+        qty: n,
+        total: brl(x.price * n)
+      };
+    })
+    .filter(Boolean);
 
   const cartCount = calcCartCount(cart);
-  const subtotal = cartSubtotal(cart, CATALOG);
+  const subtotal = cartSubtotal(cart, catalog);
 
   // Free shipping recalculation at R$ 250 (bidirectional) — logic lives in cart.js
   const shipCost = shippingCost(subtotal, ship);
@@ -151,27 +167,39 @@ export default function App() {
     (ship === 'Retirar na loja' || buyer.address.trim().length > 5) &&
     cartCount > 0;
 
-  const handlePlaceOrder = () => {
-    if (!validBuyer || busy) return;
+  const handlePlaceOrder = async () => {
+    if (!validBuyer || checkoutInFlight.current) return;
+    checkoutInFlight.current = true;
     setBusy(true);
+    setActionError(null);
 
-    setTimeout(() => {
-      orderSequence += 1;
+    try {
+      await updateCartDelivery(customerId, {
+        address: ship === 'Retirar na loja' ? null : buyer.address,
+        shippingMethod: SHIPPING_METHOD_CODES[ship],
+        paymentMethod: PAYMENT_METHOD_CODES[pay]
+      });
+      const created = await apiCheckout(customerId);
+
       const newOrder = {
-        code: `#${orderSequence}`,
+        code: `#${created.id.slice(-6).toUpperCase()}`,
         email: buyer.email,
-        ship,
-        pay,
-        address: buyer.address,
-        lines: cartLines.map(l => ({ qty: l.qty, name: l.name, total: l.total })),
-        total: brl(total)
+        ship: created.deliveryAddress ? 'Entrega padrão' : 'Retirar na loja',
+        pay: paymentMethodLabel(created.paymentMethod),
+        address: created.deliveryAddress,
+        lines: (created.items || []).map(it => ({ qty: it.quantity, name: it.productName, total: brl(Number(it.subtotal)) })),
+        total: brl(Number(created.total))
       };
 
       setOrder(newOrder);
       setCart({});
-      setBusy(false);
       setView('done');
-    }, 750);
+    } catch (err) {
+      setActionError(err.message || 'Não foi possível confirmar seu pedido agora. Tente novamente.');
+    } finally {
+      setBusy(false);
+      checkoutInFlight.current = false;
+    }
   };
 
   const isPickup = (order && order.ship === 'Retirar na loja') || ship === 'Retirar na loja';
@@ -296,6 +324,20 @@ export default function App() {
             </div>
           </div>
 
+          {/* LOADING / ERROR DO CATÁLOGO */}
+          {catalogLoading && (
+            <div style={{ padding: 'clamp(40px, 5vw, 72px) clamp(24px, 5vw, 72px) clamp(60px, 8vw, 110px) clamp(24px, 5vw, 72px)' }}>
+              <p style={{ margin: 0, fontSize: '14.5px', color: '#94a3b8' }}>Carregando produtos…</p>
+            </div>
+          )}
+          {catalogError && !catalogLoading && (
+            <div style={{ padding: 'clamp(40px, 5vw, 72px) clamp(24px, 5vw, 72px) clamp(60px, 8vw, 110px) clamp(24px, 5vw, 72px)' }}>
+              <p style={{ margin: 0, fontSize: '14.5px', color: '#dc2626' }}>{catalogError}</p>
+            </div>
+          )}
+
+          {!catalogLoading && !catalogError && (
+          <>
           {/* PRODUCT CARDS GRID */}
           <section style={{ padding: 'clamp(40px, 5vw, 72px) clamp(24px, 5vw, 72px) clamp(60px, 8vw, 110px) clamp(24px, 5vw, 72px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'clamp(40px, 5vw, 72px) clamp(28px, 3.5vw, 56px)' }}>
             {visibleProducts.map(pr => (
@@ -338,6 +380,7 @@ export default function App() {
                     </span>
                     <button
                       onClick={() => addToCart(pr.id, 1)}
+                      disabled={!!addBusyIds[pr.id]}
                       style={{
                         border: 0,
                         background: accent,
@@ -347,10 +390,11 @@ export default function App() {
                         fontSize: '13.5px',
                         fontWeight: 500,
                         boxShadow: `0 14px 30px ${accentGlow}`,
-                        cursor: 'pointer'
+                        cursor: addBusyIds[pr.id] ? 'not-allowed' : 'pointer',
+                        opacity: addBusyIds[pr.id] ? 0.7 : 1
                       }}
                     >
-                      Adicionar ao carrinho
+                      {addBusyIds[pr.id] ? 'Adicionando…' : 'Adicionar ao carrinho'}
                     </button>
                   </div>
                 </div>
@@ -368,11 +412,13 @@ export default function App() {
               </p>
             </div>
           )}
+          </>
+          )}
         </div>
       )}
 
       {/* VIEW: DETAIL */}
-      {view === 'detail' && (
+      {view === 'detail' && curProduct && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '22px clamp(24px, 5vw, 72px) 0 clamp(24px, 5vw, 72px)' }}>
             <button
@@ -441,11 +487,8 @@ export default function App() {
                   </span>
                 </div>
                 <button
-                  onClick={() => {
-                    addToCart(curProduct.id, qty);
-                    setQty(1);
-                    setView('cart');
-                  }}
+                  onClick={() => performAddToCart(curProduct.id, qty, { navigateToCart: true })}
+                  disabled={!!addBusyIds[curProduct.id]}
                   style={{
                     border: 0,
                     background: accent,
@@ -455,11 +498,15 @@ export default function App() {
                     fontSize: '15.5px',
                     fontWeight: 500,
                     boxShadow: `0 18px 36px ${accentGlow}`,
-                    cursor: 'pointer'
+                    cursor: addBusyIds[curProduct.id] ? 'not-allowed' : 'pointer',
+                    opacity: addBusyIds[curProduct.id] ? 0.7 : 1
                   }}
                 >
-                  Adicionar ao carrinho · {brl(curProduct.price * qty)}
+                  {addBusyIds[curProduct.id] ? 'Adicionando…' : `Adicionar ao carrinho · ${brl(curProduct.price * qty)}`}
                 </button>
+                {actionError && (
+                  <p style={{ margin: 0, fontSize: '12.5px', lineHeight: 1.65, color: '#dc2626' }}>{actionError}</p>
+                )}
               </div>
 
               {/* SPECS */}
@@ -490,7 +537,7 @@ export default function App() {
               Combina com
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 'clamp(28px, 3.5vw, 52px)' }}>
-              {CATALOG.filter(x => x.id !== curProduct.id).slice(0, 3).map(rp => (
+              {catalog.filter(x => x.id !== curProduct.id).slice(0, 3).map(rp => (
                 <article key={rp.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
                   <button
                     onClick={() => {
@@ -539,6 +586,9 @@ export default function App() {
                 ? 'Seu carrinho está vazio no momento.'
                 : `${cartCount} ${cartCount === 1 ? 'item selecionado.' : 'itens selecionados.'} Entregamos hoje se o pedido sair até 18h.`}
             </p>
+            {actionError && (
+              <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.65, color: '#dc2626' }}>{actionError}</p>
+            )}
           </section>
 
           {/* EMPTY STATE: Hides summary/checkout and shows 'Ver a loja' */}
@@ -598,10 +648,11 @@ export default function App() {
                         </h2>
                       </button>
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', paddingTop: '4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', border: '1px solid #e2e8f0', borderRadius: '999px', padding: '4px', opacity: itemBusyIds[l.id] ? 0.6 : 1 }}>
                           <button
                             onClick={() => setItemQty(l.id, l.qty - 1)}
-                            style={{ border: 0, background: 'transparent', width: '36px', height: '36px', borderRadius: '999px', fontSize: '16px', color: '#334155', cursor: 'pointer' }}
+                            disabled={!!itemBusyIds[l.id]}
+                            style={{ border: 0, background: 'transparent', width: '36px', height: '36px', borderRadius: '999px', fontSize: '16px', color: '#334155', cursor: itemBusyIds[l.id] ? 'not-allowed' : 'pointer' }}
                           >
                             −
                           </button>
@@ -610,7 +661,8 @@ export default function App() {
                           </span>
                           <button
                             onClick={() => setItemQty(l.id, l.qty + 1)}
-                            style={{ border: 0, background: 'transparent', width: '36px', height: '36px', borderRadius: '999px', fontSize: '16px', color: '#334155', cursor: 'pointer' }}
+                            disabled={!!itemBusyIds[l.id]}
+                            style={{ border: 0, background: 'transparent', width: '36px', height: '36px', borderRadius: '999px', fontSize: '16px', color: '#334155', cursor: itemBusyIds[l.id] ? 'not-allowed' : 'pointer' }}
                           >
                             +
                           </button>
@@ -621,7 +673,8 @@ export default function App() {
                       </div>
                       <button
                         onClick={() => setItemQty(l.id, 0)}
-                        style={{ alignSelf: 'flex-start', border: 0, background: 'transparent', padding: 0, fontSize: '12.5px', color: '#94a3b8', cursor: 'pointer' }}
+                        disabled={!!itemBusyIds[l.id]}
+                        style={{ alignSelf: 'flex-start', border: 0, background: 'transparent', padding: 0, fontSize: '12.5px', color: '#94a3b8', cursor: itemBusyIds[l.id] ? 'not-allowed' : 'pointer' }}
                       >
                         Remover
                       </button>
@@ -919,6 +972,9 @@ export default function App() {
                   ? 'Você recebe a confirmação por e-mail em instantes.'
                   : 'Nome, e-mail e dados de entrega são necessários para seguir.'}
               </p>
+              {actionError && (
+                <p style={{ margin: 0, fontSize: '12.5px', lineHeight: 1.65, color: '#dc2626' }}>{actionError}</p>
+              )}
             </div>
           </section>
         </div>

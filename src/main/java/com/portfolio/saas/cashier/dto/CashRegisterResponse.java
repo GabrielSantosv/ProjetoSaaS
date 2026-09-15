@@ -28,25 +28,32 @@ public record CashRegisterResponse(
                 register.getClosedAt(),
                 register.getTotalCash(),
                 register.getTotalCard(),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
+                register.getCashDifference(),
+                register.getCardDifference(),
                 register.getStatus(),
                 register.getCreatedAt(),
                 register.getUpdatedAt()
         );
     }
 
-    public static CashRegisterResponse fromEntity(CashRegister register, BigDecimal cashDifference, BigDecimal cardDifference) {
+    /**
+     * Como um caixa aberto não tem totalCash/totalCard persistidos (só são
+     * gravados no fechamento), esta variante devolve o mesmo registro com uma
+     * prévia calculada na hora a partir dos pagamentos já recebidos no turno,
+     * sem persistir nada — é só o que a tela de conciliação mostra como
+     * "esperado" antes do operador confirmar o fechamento.
+     */
+    public static CashRegisterResponse withLiveTotals(CashRegister register, BigDecimal liveCash, BigDecimal liveCard) {
         if (register == null) return null;
         return new CashRegisterResponse(
                 register.getId(),
                 register.getTenantId(),
                 register.getOpenedAt(),
                 register.getClosedAt(),
-                register.getTotalCash(),
-                register.getTotalCard(),
-                cashDifference,
-                cardDifference,
+                liveCash,
+                liveCard,
+                register.getCashDifference(),
+                register.getCardDifference(),
                 register.getStatus(),
                 register.getCreatedAt(),
                 register.getUpdatedAt()

@@ -1,6 +1,7 @@
 package com.portfolio.saas.auth;
 
 import com.portfolio.saas.auth.dto.AuthResponse;
+import com.portfolio.saas.auth.dto.ChangePasswordRequest;
 import com.portfolio.saas.auth.dto.LoginRequest;
 import com.portfolio.saas.auth.dto.RegisterTenantRequest;
 import com.portfolio.saas.auth.dto.UserResponse;
@@ -46,5 +47,15 @@ public class AuthController {
     @Operation(summary = "Dados do Usuário Autenticado", description = "Retorna os dados do usuário autenticado no token JWT atual", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(UserResponse.fromPrincipal(principal));
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Trocar a própria senha", description = "Troca a senha do usuário autenticado. Tokens já emitidos continuam válidos até expirar (JWT stateless).", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(principal.getId(), request);
+        return ResponseEntity.noContent().build();
     }
 }

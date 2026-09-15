@@ -2,12 +2,16 @@ package com.portfolio.saas.cashier;
 
 import com.portfolio.saas.cashier.dto.CashRegisterResponse;
 import com.portfolio.saas.cashier.dto.CloseCashRegisterRequest;
+import com.portfolio.saas.common.dto.PageResponse;
 import com.portfolio.saas.common.exception.BusinessException;
 import com.portfolio.saas.common.exception.ResourceNotFoundException;
 import com.portfolio.saas.payment.PaymentMethod;
 import com.portfolio.saas.payment.PaymentRepository;
 import com.portfolio.saas.tenant.TenantContext;
 import com.portfolio.saas.tenant.TenantRepository;
+import jakarta.persistence.OptimisticLockException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,19 +85,35 @@ public class CashRegisterServiceImpl implements CashRegisterService {
         BigDecimal expectedCash = totalCash == null ? BigDecimal.ZERO : totalCash;
         BigDecimal expectedCard = totalCard == null ? BigDecimal.ZERO : totalCard;
 
-        register.setTotalCash(expectedCash);
-        register.setTotalCard(expectedCard);
+        BigDecimal cashDifference = request.cashDifference(expectedCash);
+        BigDecimal cardDifference = request.cardDifference(expectedCard);
+
+        register.setTotalCash(expectedCash.add(cashDifference));
+        register.setTotalCard(expectedCard.add(cardDifference));
+        register.setCashDifference(cashDifference);
+        register.setCardDifference(cardDifference);
         register.setStatus(CashRegisterStatus.CLOSED);
         register.setOpenMarker(null);
         register.setClosedAt(LocalDateTime.now());
 
-        BigDecimal cashDifference = request.cashDifference(expectedCash);
-        BigDecimal cardDifference = request.cardDifference(expectedCard);
+        try {
+            CashRegister saved = cashRegisterRepository.saveAndFlush(register);
+            return CashRegisterResponse.fromEntity(saved);
+        } catch (OptimisticLockingFailureException | OptimisticLockException ex) {
+            throw new BusinessException("Este caixa já foi fechado ou alterado por outro terminal. Atualize a tela e tente novamente.");
+        }
+    }
 
-        CashRegister saved = cashRegisterRepository.save(register);
-        saved.setTotalCash(expectedCash.add(cashDifference));
-        saved.setTotalCard(expectedCard.add(cardDifference));
-        return CashRegisterResponse.fromEntity(cashRegisterRepository.save(saved), cashDifference, cardDifference);
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<CashRegisterResponse> listRegisters(Pageable pageable) {
+        String tenantId = TenantContext.getTenantId();
+        if (tenantId == null || tenantId.isBlank()) {
+            throw new BusinessException("Tenant ativo obrigatório para consultar o histórico do caixa.");
+        }
+
+        return PageResponse.fromPage(cashRegisterRepository.findAllByTenantId(tenantId, pageable)
+                .map(CashRegisterResponse::fromEntity));
     }
 
     @Override
@@ -107,6 +127,17 @@ public class CashRegisterServiceImpl implements CashRegisterService {
         CashRegister register = cashRegisterRepository.findOpenByTenantId(tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhum caixa aberto para este tenant."));
 
-        return CashRegisterResponse.fromEntity(register);
+        BigDecimal liveCash = paymentRepository.sumByTenantIdAndMethodAndCreatedAtGreaterThanEqual(
+                tenantId, PaymentMethod.CASH, register.getOpenedAt());
+        BigDecimal liveCard = paymentRepository.sumByTenantIdAndMethodAndCreatedAtGreaterThanEqual(
+                tenantId, PaymentMethod.CARD, register.getOpenedAt())
+                .add(paymentRepository.sumByTenantIdAndMethodAndCreatedAtGreaterThanEqual(
+                        tenantId, PaymentMethod.PIX, register.getOpenedAt()));
+
+        return CashRegisterResponse.withLiveTotals(
+                register,
+                liveCash == null ? BigDecimal.ZERO : liveCash,
+                liveCard == null ? BigDecimal.ZERO : liveCard
+        );
     }
 }

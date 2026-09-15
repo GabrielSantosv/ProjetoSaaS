@@ -6,5 +6,8 @@ import java.util.List;
 public record CartResponse(
         String customerId,
         List<CartItemResponse> items,
-        BigDecimal total
+        BigDecimal total,
+        String deliveryAddress,
+        String shippingMethod,
+        String paymentMethod
 ) {}

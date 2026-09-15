@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -32,6 +33,16 @@ public class CashRegister extends BaseEntity {
 
     @Column(name = "open_marker", length = 36, nullable = true)
     private String openMarker;
+
+    @Column(name = "cash_difference", precision = 12, scale = 2, nullable = false)
+    private BigDecimal cashDifference = BigDecimal.ZERO;
+
+    @Column(name = "card_difference", precision = 12, scale = 2, nullable = false)
+    private BigDecimal cardDifference = BigDecimal.ZERO;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     public CashRegister() {
         super();
@@ -88,5 +99,29 @@ public class CashRegister extends BaseEntity {
 
     public void setOpenMarker(String openMarker) {
         this.openMarker = openMarker;
+    }
+
+    public BigDecimal getCashDifference() {
+        return cashDifference;
+    }
+
+    public void setCashDifference(BigDecimal cashDifference) {
+        this.cashDifference = cashDifference;
+    }
+
+    public BigDecimal getCardDifference() {
+        return cardDifference;
+    }
+
+    public void setCardDifference(BigDecimal cardDifference) {
+        this.cardDifference = cardDifference;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

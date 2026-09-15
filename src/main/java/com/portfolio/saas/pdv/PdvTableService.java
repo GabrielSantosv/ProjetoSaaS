@@ -9,6 +9,7 @@ import com.portfolio.saas.order.dto.OrderItemRequest;
 import com.portfolio.saas.order.dto.OrderResponse;
 import com.portfolio.saas.pdv.dto.AddTableItemRequest;
 import com.portfolio.saas.pdv.dto.OpenTableRequest;
+import com.portfolio.saas.pdv.dto.PdvTableItemResponse;
 import com.portfolio.saas.pdv.dto.PdvTableSessionResponse;
 import jakarta.persistence.OptimisticLockException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PdvTableService {
@@ -38,6 +38,13 @@ public class PdvTableService {
         this.restaurantTableItemRepository = restaurantTableItemRepository;
     }
 
+    @Transactional(readOnly = true)
+    public List<PdvTableSessionResponse> listOpenTables() {
+        return restaurantTableRepository.findByStatusOrderByNumberAsc(PdvTableStatus.OPEN).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     @Transactional
     public PdvTableSessionResponse openTable(OpenTableRequest request) {
         if (request == null) {
@@ -52,13 +59,36 @@ public class PdvTableService {
 
         Integer tableNumber = extractTableNumber(request.tableNumber());
 
-        if (restaurantTableRepository.findByTenantIdAndNumber(getCurrentTenantId(), tableNumber).isPresent()) {
+        // A constraint única (tenant_id, number) cobre a linha para sempre, não só enquanto
+        // aberta — então uma mesa já usada e fechada precisa reaproveitar a mesma linha em vez
+        // de tentar inserir outra, senão o número nunca mais poderia ser aberto (giro de mesas
+        // é o uso normal de um restaurante, não uma exceção).
+        var existing = restaurantTableRepository.findByTenantIdAndNumber(getCurrentTenantId(), tableNumber);
+        if (existing.isPresent() && existing.get().getStatus() == PdvTableStatus.OPEN) {
             throw new BusinessException("Já existe uma mesa aberta com este número para o tenant atual.");
         }
 
         String customerId = buildCustomerId(tableNumber);
-        RestaurantTable table = new RestaurantTable(tableNumber, request.customerName(), customerId);
-        table = restaurantTableRepository.save(table);
+        RestaurantTable table;
+        if (existing.isPresent()) {
+            table = restaurantTableRepository.findByIdWithItems(existing.get().getId())
+                    .orElseThrow(() -> new BusinessException("Mesa não encontrada."));
+            table.getItems().clear();
+            table.setCustomerName(request.customerName());
+            table.setCustomerId(customerId);
+            table.setStatus(PdvTableStatus.OPEN);
+            table.setTotal(BigDecimal.ZERO);
+            table.setOrderId(null);
+            table.setOpenedAt(LocalDateTime.now());
+            table.setClosedAt(null);
+        } else {
+            table = new RestaurantTable(tableNumber, request.customerName(), customerId);
+        }
+        try {
+            table = restaurantTableRepository.saveAndFlush(table);
+        } catch (OptimisticLockingFailureException | OptimisticLockException ex) {
+            throw new BusinessException("Esta mesa acabou de ser aberta por outro terminal. Tente novamente.");
+        }
         return toResponse(table);
     }
 
@@ -83,26 +113,30 @@ public class PdvTableService {
             ));
         }
 
-        Optional<RestaurantTableItem> existing = table.getItems().stream()
-                .filter(item -> item.getProductId().equals(product.getId()))
-                .findFirst();
+        // Upsert atômico (INSERT ... ON DUPLICATE KEY UPDATE, protegido pela constraint
+        // uq_table_item_product): evita tanto o OptimisticLockException de um save/saveAndFlush
+        // da RestaurantTable versionada quanto a corrida de "duas linhas para o mesmo produto"
+        // quando dois addItem concorrentes acertam a mesma mesa — inclusive no primeiro item
+        // de uma comanda nova, quando a linha ainda não existe para nenhum dos dois.
+        restaurantTableItemRepository.upsertItem(
+                java.util.UUID.randomUUID().toString(),
+                getCurrentTenantId(),
+                tableId,
+                product.getId(),
+                product.getName(),
+                request.quantity(),
+                product.getPrice()
+        );
 
-        if (existing.isPresent()) {
-            RestaurantTableItem item = existing.get();
-            item.setQuantity(item.getQuantity() + request.quantity());
-        } else {
-            RestaurantTableItem item = new RestaurantTableItem(table, product.getId(), product.getName(), request.quantity(), product.getPrice());
-            table.getItems().add(item);
-            restaurantTableItemRepository.save(item);
-        }
-
-        BigDecimal total = table.getItems().stream()
+        RestaurantTable refreshed = restaurantTableRepository.findByIdWithItems(tableId)
+                .orElseThrow(() -> new BusinessException("Mesa não encontrada."));
+        BigDecimal total = refreshed.getItems().stream()
                 .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        table.setTotal(total);
+        restaurantTableRepository.updateTotalAtomic(tableId, total);
+        refreshed.setTotal(total);
 
-        restaurantTableRepository.saveAndFlush(table);
-        return toResponse(table);
+        return toResponse(refreshed);
     }
 
     @Transactional
@@ -183,13 +217,26 @@ public class PdvTableService {
     }
 
     private PdvTableSessionResponse toResponse(RestaurantTable table) {
+        List<PdvTableItemResponse> items = table.getItems().stream()
+                .map(item -> new PdvTableItemResponse(
+                        item.getProductId(),
+                        item.getProductName(),
+                        item.getQuantity(),
+                        item.getUnitPrice(),
+                        item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                ))
+                .toList();
+
         return new PdvTableSessionResponse(
                 table.getId(),
+                table.getNumber(),
                 "Mesa " + table.getNumber(),
                 table.getCustomerName(),
                 table.getStatus(),
                 table.getTotal(),
-                table.getOrderId()
+                table.getOrderId(),
+                table.getOpenedAt(),
+                items
         );
     }
 }

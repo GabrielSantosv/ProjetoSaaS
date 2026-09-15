@@ -113,7 +113,7 @@ export default function App() {
             <DashboardRealView accentColor={accentColor} />
           )}
 
-          {activeTab === 'pdv' && <PdvView accentColor={accentColor} />}
+          {activeTab === 'pdv' && <PdvView accentColor={accentColor} userName={userName} />}
 
           {activeTab === 'importacao' && <ImportView accentColor={accentColor} />}
 

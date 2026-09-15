@@ -146,7 +146,12 @@ export default function OrdersView({
         if (err.name === 'AbortError') return;
         setListError(err.message || 'Não foi possível carregar os pedidos agora.');
       })
-      .finally(() => setLoadingList(false));
+      .finally(() => {
+        // Uma requisição cancelada (StrictMode remontando o efeito, ou o usuário trocando
+        // o filtro rápido) nunca pode desligar o loading — só quem ainda está "vivo" pode,
+        // senão a tela pisca "Nada encontrado" com contagem zerada antes do fetch real chegar.
+        if (!controller.signal.aborted) setLoadingList(false);
+      });
 
     return () => controller.abort();
   }, [page, debouncedQuery, filter]);
@@ -167,51 +172,80 @@ export default function OrdersView({
   const pagedRows = orders;
   const validPage = Math.min(page, totalPages);
 
-  const exportCSVOLD = () => {
-    if (filteredOrders.length === 0) return;
-    const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
-    const head = 'pedido;cliente;canal;tipo_entrega;quando;total;situacao\n';
-    const body = filteredOrders
-      .map(r => [r.code, r.client, r.channel, r.deliveryType || 'Entrega', r.when, brl(r.total).replace('R$ ', ''), r.status].map(esc).join(';'))
-      .join('\n');
+  const exportCSV = async () => {
+    if (totalElements === 0 || exporting) return;
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('page', '0');
+      params.set('size', String(totalElements));
+      if (debouncedQuery) params.set('search', debouncedQuery);
+      if (filter !== 'Todos' && LABEL_TO_STATUS[filter]) params.set('status', LABEL_TO_STATUS[filter]);
 
-    const stamp = new Date().toISOString().slice(0, 10);
-    const blob = new Blob(['\uFEFF' + head + body], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pedidos-${stamp}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+      const data = filter === 'Em preparo'
+        ? { page: { content: [] } }
+        : await apiRequest(`/api/v1/orders/admin?${params.toString()}`);
+      const rows = (data.page.content || []).map(mapOrderFromApi);
+
+      const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+      const head = 'pedido;cliente;canal;quando;total;situacao\n';
+      const body = rows
+        .map(r => [r.code, r.client, r.channel, r.when, brl(r.total).replace('R$ ', ''), r.status].map(esc).join(';'))
+        .join('\n');
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      const blob = new Blob(['﻿' + head + body], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pedidos-${stamp}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch {
+      setListError('Não foi possível exportar o CSV agora. Tente novamente.');
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const openOrderDetail = o => {
-    setSelectedOrder(o);
+  const openOrderDetail = row => {
     setView('detail');
+    setOrderDetail(null);
+    setDetailError(null);
+    setDetailLoading(true);
+    apiRequest(`/api/v1/orders/${row.id}`)
+      .then(data => setOrderDetail(mapOrderFromApi(data)))
+      .catch(err => setDetailError(err.message || 'Não foi possível carregar o pedido agora.'))
+      .finally(() => setDetailLoading(false));
   };
 
-  const currentDetailOrder = selectedOrder || orders[0];
-  const isPickup = currentDetailOrder.deliveryType === 'Retirar na loja' || currentDetailOrder.channel === 'PDV';
+  const currentDetailOrder = orderDetail;
+  const isPickup = currentDetailOrder?.channel === 'PDV';
 
-  const detailItems = [
-    { qty: 2, name: 'Risoto de cogumelos', sku: 'PRD-1042', price: brl(118) },
-    { qty: 1, name: 'Salada de burrata', sku: 'PRD-1044', price: brl(52) },
-    { qty: 4, name: 'Água com gás 500ml', sku: 'PRD-1048', price: brl(36) },
-    { qty: 1, name: 'Vinho Malbec (taça)', sku: 'PRD-1047', price: brl(48) }
-  ];
+  const detailItems = (currentDetailOrder?.items || []).map(it => ({
+    qty: it.qty,
+    name: it.name,
+    sku: it.sku,
+    price: brl(it.subtotal)
+  }));
 
-  const subtotal = currentDetailOrder.total * 0.9;
-  const shipping = isPickup ? 0 : currentDetailOrder.total * 0.06;
-  const discount = currentDetailOrder.total * 0.02;
+  // Backend nunca aplica frete/desconto no total (OrderServiceImpl soma só os subtotais
+  // dos itens) — subtotal real vem da soma dos itens; frete e desconto ficam zerados em
+  // vez de inventar um valor que a API não retorna.
+  const subtotal = (currentDetailOrder?.items || []).reduce((sum, it) => sum + it.subtotal, 0);
+  const shipping = 0;
+  const discount = 0;
 
-  // Strict regression check: Retirar na loja shows "Pronto para retirada"/"Retirado na loja", NO delivery mention
-  const timelineSteps = [
+  // Linha do tempo com 3 marcos reais (criado / pago / concluído-ou-cancelado), adaptada
+  // por canal — pedido de PDV nunca menciona entrega. "Em preparo"/"Enviado" como estágios
+  // intermediários não existem no backend (só 4 status), então não fabricamos uma etapa
+  // sem sinal real por trás dela.
+  const timelineSteps = !currentDetailOrder ? [] : [
     { label: 'Pedido criado', at: currentDetailOrder.when, done: true },
-    { label: 'Pagamento aprovado', at: '2 min depois', done: currentDetailOrder.status !== 'Pendente' && currentDetailOrder.status !== 'Cancelado' },
     {
-      label: isPickup ? 'Em preparo no balcão' : 'Em separação',
-      at: currentDetailOrder.status === 'Enviado' || currentDetailOrder.status === 'Em preparo' ? '8 min depois' : 'aguardando',
-      done: currentDetailOrder.status === 'Enviado' || currentDetailOrder.status === 'Em preparo'
+      label: 'Pagamento aprovado',
+      at: currentDetailOrder.status !== 'Pendente' && currentDetailOrder.status !== 'Cancelado' ? currentDetailOrder.updatedWhen : 'aguardando',
+      done: currentDetailOrder.status !== 'Pendente' && currentDetailOrder.status !== 'Cancelado'
     },
     {
       label: currentDetailOrder.status === 'Cancelado'
@@ -219,7 +253,7 @@ export default function OrdersView({
         : isPickup
         ? 'Pronto para retirada na loja'
         : 'Enviado para entrega',
-      at: currentDetailOrder.status === 'Enviado' ? '24 min depois' : currentDetailOrder.status === 'Cancelado' ? 'cancelado pelo cliente' : 'aguardando',
+      at: currentDetailOrder.status === 'Enviado' || currentDetailOrder.status === 'Cancelado' ? currentDetailOrder.updatedWhen : 'aguardando',
       done: currentDetailOrder.status === 'Enviado' || currentDetailOrder.status === 'Cancelado'
     }
   ];
@@ -243,7 +277,7 @@ export default function OrdersView({
               color: '#1e293b'
             }}
           >
-            {view === 'detail' ? `Pedido ${currentDetailOrder.code}` : 'Pedidos'}
+            {view === 'detail' ? `Pedido ${currentDetailOrder ? currentDetailOrder.code : ''}` : 'Pedidos'}
           </h1>
           <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.65, color: '#64748b' }}>
             {view === 'detail'
@@ -256,19 +290,19 @@ export default function OrdersView({
           {view === 'list' ? (
             <button
               onClick={exportCSV}
-              disabled={filteredOrders.length === 0}
+              disabled={totalElements === 0 || exporting}
               style={{
-                border: `1px solid ${filteredOrders.length === 0 ? '#e2e8f0' : '#bfdbfe'}`,
+                border: `1px solid ${totalElements === 0 ? '#e2e8f0' : '#bfdbfe'}`,
                 background: '#ffffff',
-                color: filteredOrders.length === 0 ? '#cbd5e1' : accentColor,
+                color: totalElements === 0 ? '#cbd5e1' : accentColor,
                 borderRadius: '999px',
                 padding: '12px 22px',
                 fontSize: '13px',
                 fontWeight: 500,
-                cursor: filteredOrders.length === 0 ? 'not-allowed' : 'pointer'
+                cursor: totalElements === 0 || exporting ? 'not-allowed' : 'pointer'
               }}
             >
-              Exportar CSV ({filteredOrders.length})
+              Exportar CSV ({totalElements})
             </button>
           ) : (
             <button
@@ -301,10 +335,7 @@ export default function OrdersView({
               </span>
               <input
                 value={query}
-                onChange={e => {
-                  setQuery(e.target.value);
-                  setPage(1);
-                }}
+                onChange={e => setQuery(e.target.value)}
                 placeholder="Buscar por pedido, cliente ou canal"
                 style={{ border: 0, background: 'transparent', flex: 1, minWidth: 0, fontSize: '13.5px', color: '#334155' }}
               />
@@ -354,7 +385,7 @@ export default function OrdersView({
 
             <div style={{ flex: 1 }} />
             <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-              {filteredOrders.length} pedidos
+              {totalElements} pedidos
             </div>
           </div>
 
@@ -374,7 +405,7 @@ export default function OrdersView({
                 <tbody>
                   {pagedRows.map(r => (
                     <tr
-                      key={r.code}
+                      key={r.id}
                       onClick={() => openOrderDetail(r)}
                       style={{ borderTop: '1px solid #f1f5f9', cursor: 'pointer' }}
                     >
@@ -417,7 +448,32 @@ export default function OrdersView({
               </table>
             </div>
 
-            {filteredOrders.length === 0 && (
+            {!loadingList && listError && (
+              <div style={{ padding: '48px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+                <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ width: '12px', height: '12px', background: '#b91c1c', borderRadius: '2px', transform: 'rotate(45deg)' }} />
+                </span>
+                <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '19px', color: '#334155' }}>
+                  Não foi possível carregar
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>
+                  {listError}
+                </div>
+              </div>
+            )}
+
+            {loadingList && orders.length === 0 && !listError && (
+              <div style={{ padding: '48px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+                <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ width: '12px', height: '12px', background: accentColor, borderRadius: '2px', transform: 'rotate(45deg)' }} />
+                </span>
+                <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '19px', color: '#334155' }}>
+                  Carregando pedidos…
+                </div>
+              </div>
+            )}
+
+            {!loadingList && !listError && totalElements === 0 && (
               <div style={{ padding: '48px 30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
                 <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ width: '12px', height: '12px', background: accentColor, borderRadius: '2px', transform: 'rotate(45deg)' }} />
@@ -433,9 +489,9 @@ export default function OrdersView({
 
             <div style={{ padding: '16px 24px', background: '#f8fafc', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '14px', fontSize: '12px', color: '#94a3b8' }}>
               <span>
-                {filteredOrders.length === 0
+                {totalElements === 0
                   ? 'Nenhum resultado'
-                  : `Mostrando ${(validPage - 1) * perPage + 1}–${Math.min(validPage * perPage, filteredOrders.length)} de ${filteredOrders.length}`}
+                  : `Mostrando ${(validPage - 1) * perPage + 1}–${Math.min(validPage * perPage, totalElements)} de ${totalElements}`}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
@@ -494,7 +550,32 @@ export default function OrdersView({
       )}
 
       {/* DETAIL VIEW */}
-      {view === 'detail' && (
+      {view === 'detail' && detailLoading && (
+        <div style={{ background: '#ffffff', borderRadius: '24px', padding: '56px', boxShadow: '0 24px 55px rgba(2,6,23,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+          <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ width: '12px', height: '12px', background: accentColor, borderRadius: '2px', transform: 'rotate(45deg)' }} />
+          </span>
+          <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '19px', color: '#334155' }}>
+            Carregando pedido…
+          </div>
+        </div>
+      )}
+
+      {view === 'detail' && !detailLoading && detailError && (
+        <div style={{ background: '#ffffff', borderRadius: '24px', padding: '56px', boxShadow: '0 24px 55px rgba(2,6,23,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+          <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ width: '12px', height: '12px', background: '#b91c1c', borderRadius: '2px', transform: 'rotate(45deg)' }} />
+          </span>
+          <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '19px', color: '#334155' }}>
+            Não foi possível carregar
+          </div>
+          <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>
+            {detailError}
+          </div>
+        </div>
+      )}
+
+      {view === 'detail' && !detailLoading && !detailError && currentDetailOrder && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))', gap: '24px', alignItems: 'start' }}>
           {/* ITEMS & FINANCIALS */}
           <div style={{ background: '#ffffff', borderRadius: '24px', padding: '30px', boxShadow: '0 24px 55px rgba(2,6,23,0.06)', display: 'flex', flexDirection: 'column', gap: '26px', minWidth: 0 }}>
@@ -630,7 +711,7 @@ export default function OrdersView({
               <div>
                 <div style={{ fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#94a3b8' }}>Tipo</div>
                 <div style={{ fontSize: '13px', fontWeight: 500, color: '#334155', marginTop: '2px' }}>
-                  {currentDetailOrder.deliveryType || (isPickup ? 'Retirar na loja' : 'Entrega')}
+                  {isPickup ? 'Retirar na loja' : 'Entrega'}
                 </div>
               </div>
             </div>

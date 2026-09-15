@@ -15,6 +15,8 @@ public record OrderResponse(
         BigDecimal total,
         OrderChannel channel,
         List<OrderItemResponse> items,
+        String deliveryAddress,
+        String paymentMethod,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -27,6 +29,8 @@ public record OrderResponse(
                 order.getTotal(),
                 order.getChannel(),
                 order.getItems() == null ? List.of() : order.getItems().stream().map(OrderItemResponse::fromEntity).toList(),
+                order.getDeliveryAddress(),
+                order.getPaymentMethod(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );

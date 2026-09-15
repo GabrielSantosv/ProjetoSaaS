@@ -86,6 +86,7 @@ class CartAndCheckoutIntegrationTest {
         assertThat(cart.items()).hasSize(1);
         assertThat(cart.total()).isEqualByComparingTo("7000.00");
 
+        cartService.updateDelivery("customer-1", null, "PICKUP", "PIX");
         var order = checkoutService.checkout("customer-1");
 
         assertThat(order.customerId()).isEqualTo("customer-1");
@@ -155,5 +156,37 @@ class CartAndCheckoutIntegrationTest {
 
         Product refreshedSecond = productRepository.findByIdScoped(secondProduct.getId()).orElseThrow();
         assertThat(refreshedSecond.getStockQuantity()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("Deve bloquear checkout quando entrega e pagamento ainda não foram definidos no carrinho")
+    void shouldRejectCheckoutWhenDeliveryAndPaymentAreMissing() {
+        cartService.addItem("customer-3", productRepository.findBySku("SKU-EC-01").orElseThrow().getId(), 1);
+
+        assertThatThrownBy(() -> checkoutService.checkout("customer-3"))
+                .isInstanceOf(com.portfolio.saas.common.exception.BusinessException.class)
+                .hasMessageContaining("forma de entrega");
+    }
+
+    @Test
+    @DisplayName("Deve bloquear a definição de entrega DELIVERY sem endereço, antes mesmo do checkout")
+    void shouldRejectDeliveryUpdateWhenAddressIsMissingForDeliveryMethod() {
+        cartService.addItem("customer-4", productRepository.findBySku("SKU-EC-01").orElseThrow().getId(), 1);
+
+        assertThatThrownBy(() -> cartService.updateDelivery("customer-4", null, "DELIVERY", "PIX"))
+                .isInstanceOf(com.portfolio.saas.common.exception.BusinessException.class)
+                .hasMessageContaining("endereço");
+    }
+
+    @Test
+    @DisplayName("Deve concluir checkout com entrega DELIVERY e persistir endereço/pagamento no pedido")
+    void shouldPersistDeliveryAndPaymentOnOrderAfterCheckout() {
+        cartService.addItem("customer-5", productRepository.findBySku("SKU-EC-01").orElseThrow().getId(), 1);
+        cartService.updateDelivery("customer-5", "Rua das Palmeiras, 482", "DELIVERY", "CREDIT_CARD");
+
+        var order = checkoutService.checkout("customer-5");
+
+        assertThat(order.deliveryAddress()).isEqualTo("Rua das Palmeiras, 482");
+        assertThat(order.paymentMethod()).isEqualTo("CREDIT_CARD");
     }
 }

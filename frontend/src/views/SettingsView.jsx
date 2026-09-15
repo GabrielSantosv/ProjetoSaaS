@@ -1,9 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import StatusBadge from '../components/StatusBadge';
+import { getToken } from '../utils/auth';
+import { mapBackendRole } from '../utils/permissions';
+
+const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8080';
+
+const PLAN_LABEL_TO_ID = { Essencial: 'ESSENCIAL', Profissional: 'PROFISSIONAL', Rede: 'REDE' };
+const PLAN_ID_TO_LABEL = { ESSENCIAL: 'Essencial', PROFISSIONAL: 'Profissional', REDE: 'Rede' };
+const USER_STATUS_TO_LABEL = { ACTIVE: 'Ativo' };
+
+async function apiRequest(path, options = {}) {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {})
+    }
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message = body?.details?.length ? body.details.join(' ') : (body?.message || 'Não foi possível completar a operação.');
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
 
 const INITIAL_SETTINGS = {
-  store: 'Restaurante Aurora Ltda',
-  cnpj: '12.345.678/0001-90',
+  store: '',
+  cnpj: '',
   email: 'contato@aurora.com.br',
   phone: '(11) 3555-0142',
   service: '10',
@@ -25,23 +56,26 @@ export default function SettingsView({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const [tenant, setTenant] = useState(null);
+  const [tenantLoading, setTenantLoading] = useState(true);
+  const [tenantError, setTenantError] = useState(null);
+
+  const [team, setTeam] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(true);
+  const [teamError, setTeamError] = useState(null);
 
   const [askDiscard, setAskDiscard] = useState(false);
   const [planModal, setPlanModal] = useState(false);
   const [planPick, setPlanPick] = useState('Profissional');
   const [planBusy, setPlanBusy] = useState(false);
+  const [planError, setPlanError] = useState(null);
 
   const [passBusy, setPassBusy] = useState(false);
   const [passMsg, setPassMsg] = useState(null);
   const [revoked, setRevoked] = useState([]);
   const [revoking, setRevoking] = useState(null);
-
-  const [team, setTeam] = useState([
-    { name: 'Helena Braga', email: 'helena@aurora.com.br', role: 'ADMIN', status: 'Ativo' },
-    { name: 'Bruno Ferraz', email: 'bruno@aurora.com.br', role: 'PDV', status: 'Ativo' },
-    { name: 'Larissa Prado', email: 'larissa@aurora.com.br', role: 'CAIXA', status: 'Ativo' },
-    { name: 'Kaio Nunes', email: 'kaio@aurora.com.br', role: 'VENDEDOR', status: 'Convite pendente' }
-  ]);
 
   const mix = (pct, other) => `color-mix(in oklab, ${accentColor} ${pct}%, ${other})`;
   const accentHover = mix(85, '#0f172a');
@@ -49,6 +83,32 @@ export default function SettingsView({
   const accentGlow = `color-mix(in oklab, ${accentColor} 32%, transparent)`;
 
   const initials = s => String(s || '').split(/[\s-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+
+  // Carrega os dados reais do tenant e da equipe uma vez, independente da aba ativa
+  useEffect(() => {
+    apiRequest('/api/v1/tenants/me')
+      .then(data => {
+        setTenant(data);
+        setSettings(prev => ({ ...prev, store: data.name, cnpj: data.document }));
+        setSavedSettings(prev => ({ ...prev, store: data.name, cnpj: data.document }));
+        setPlanPick(PLAN_ID_TO_LABEL[data.planId] || data.planId);
+      })
+      .catch(err => setTenantError(err.message || 'Não foi possível carregar os dados do estabelecimento.'))
+      .finally(() => setTenantLoading(false));
+
+    apiRequest('/api/v1/users')
+      .then(data => {
+        setTeam((data || []).map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: mapBackendRole(u.role),
+          status: USER_STATUS_TO_LABEL[u.status] || u.status
+        })));
+      })
+      .catch(err => setTeamError(err.message || 'Não foi possível carregar a equipe.'))
+      .finally(() => setTeamLoading(false));
+  }, []);
 
   // ESC key handler for modals
   useEffect(() => {
@@ -68,16 +128,30 @@ export default function SettingsView({
     setSaved(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (busy) return;
     setBusy(true);
+    setSaveError(null);
 
-    setTimeout(() => {
-      setSavedSettings(JSON.parse(JSON.stringify(settings)));
+    try {
+      const response = await apiRequest('/api/v1/tenants/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: settings.store,
+          document: settings.cnpj,
+          planId: tenant?.planId || PLAN_LABEL_TO_ID[planPick] || 'ESSENCIAL'
+        })
+      });
+      setTenant(response);
+      const nextSaved = { ...settings, store: response.name, cnpj: response.document };
+      setSavedSettings(nextSaved);
       setBusy(false);
       setDirty(false);
       setSaved(true);
-    }, 700);
+    } catch (err) {
+      setBusy(false);
+      setSaveError(err.message || 'Não foi possível salvar as alterações agora.');
+    }
   };
 
   const handleDiscard = () => {
@@ -103,21 +177,27 @@ export default function SettingsView({
   const strengthColors = ['#e2e8f0', '#b91c1c', '#b45309', accentColor, '#15803d'];
   const strengthText = ['Digite uma senha', 'Fraca', 'Razoável', 'Boa', 'Forte'];
 
-  const handleSubmitPass = () => {
+  const handleSubmitPass = async () => {
     if (passBusy) return;
     if (!settings.oldPass) return setPassMsg({ ok: false, text: 'Informe a senha atual.' });
-    if (settings.oldPass !== 'aurora2026') return setPassMsg({ ok: false, text: 'A senha atual está incorreta.' });
     if (settings.newPass.length < 8) return setPassMsg({ ok: false, text: 'A nova senha precisa ter pelo menos 8 caracteres.' });
     if (secScore < 3) return setPassMsg({ ok: false, text: 'Senha fraca. Combine maiúsculas, números e um símbolo.' });
     if (settings.newPass === settings.oldPass) return setPassMsg({ ok: false, text: 'A nova senha precisa ser diferente da atual.' });
 
     setPassBusy(true);
     setPassMsg(null);
-    setTimeout(() => {
+    try {
+      await apiRequest('/api/v1/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: settings.oldPass, newPassword: settings.newPass })
+      });
       setPassBusy(false);
       setPassMsg({ ok: true, text: 'Senha atualizada. As outras sessões continuam ativas.' });
       setSettings(s => ({ ...s, oldPass: '', newPass: '' }));
-    }, 900);
+    } catch (err) {
+      setPassBusy(false);
+      setPassMsg({ ok: false, text: err.message || 'Não foi possível atualizar a senha agora.' });
+    }
   };
 
   const ruleDefs = [
@@ -152,7 +232,9 @@ export default function SettingsView({
     { name: 'Rede', price: 'R$ 690/mês', hint: 'Terminais ilimitados · multi-loja' }
   ];
 
+  const currentPlanLabel = PLAN_ID_TO_LABEL[tenant?.planId] || tenant?.planId || '—';
   const isAdmin = userRole === 'ADMIN';
+  const notBuiltTitle = 'Disponível em uma fase futura — ainda não existe endpoint de backend para esta ação.';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -280,7 +362,7 @@ export default function SettingsView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {planOptions.map(po => {
                 const on = planPick === po.name;
-                const isCurrent = po.name === 'Profissional';
+                const isCurrent = po.name === currentPlanLabel;
                 return (
                   <button
                     key={po.name}
@@ -327,14 +409,35 @@ export default function SettingsView({
                 );
               })}
             </div>
+
+            {planError && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '11px', background: '#fef2f2', borderRadius: '14px', padding: '12px 15px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b91c1c', flex: 'none' }} />
+                <span style={{ fontSize: '12.5px', lineHeight: 1.5, color: '#b91c1c' }}>{planError}</span>
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setPlanBusy(true);
-                  setTimeout(() => {
+                  setPlanError(null);
+                  try {
+                    const response = await apiRequest('/api/v1/tenants/me', {
+                      method: 'PUT',
+                      body: JSON.stringify({
+                        name: settings.store,
+                        document: settings.cnpj,
+                        planId: PLAN_LABEL_TO_ID[planPick] || planPick
+                      })
+                    });
+                    setTenant(response);
                     setPlanBusy(false);
                     setPlanModal(false);
-                  }, 800);
+                  } catch (err) {
+                    setPlanBusy(false);
+                    setPlanError(err.message || 'Não foi possível trocar de plano agora.');
+                  }
                 }}
                 disabled={planBusy}
                 style={{
@@ -432,6 +535,12 @@ export default function SettingsView({
         </div>
       </div>
 
+      {saveError && (
+        <div style={{ background: '#fef2f2', borderRadius: '18px', padding: '14px 18px', fontSize: '12.5px', color: '#b91c1c', lineHeight: 1.5 }}>
+          {saveError}
+        </div>
+      )}
+
       {/* TABS */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
         {tabs.map(t => {
@@ -470,6 +579,7 @@ export default function SettingsView({
                 <input
                   value={settings.store}
                   onChange={e => patch({ store: e.target.value })}
+                  disabled={tenantLoading}
                   style={{ border: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '12px', padding: '12px 14px', fontSize: '13.5px', color: '#334155' }}
                 />
               </label>
@@ -478,10 +588,19 @@ export default function SettingsView({
                 <input
                   value={settings.cnpj}
                   onChange={e => patch({ cnpj: e.target.value })}
+                  disabled={tenantLoading}
                   style={{ border: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '12px', padding: '12px 14px', fontSize: '13.5px', color: '#334155', fontVariantNumeric: 'tabular-nums' }}
                 />
               </label>
             </div>
+
+            {tenantError && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '11px', background: '#fef2f2', borderRadius: '14px', padding: '12px 15px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b91c1c', flex: 'none' }} />
+                <span style={{ fontSize: '12.5px', lineHeight: 1.5, color: '#b91c1c' }}>{tenantError}</span>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
                 <span style={{ fontSize: '12px', color: '#64748b' }}>E-mail de contato</span>
@@ -554,7 +673,7 @@ export default function SettingsView({
               <div style={{ fontSize: '10.5px', letterSpacing: '0.15em', textTransform: 'uppercase', color: accentColor, fontWeight: 600 }}>Plano</div>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '14px' }}>
                 <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '26px', letterSpacing: '-0.02em', color: '#334155' }}>
-                  Profissional
+                  {currentPlanLabel}
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '11.5px', fontWeight: 600, borderRadius: '999px', padding: '5px 12px', background: '#f0fdf4', color: '#15803d' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#15803d' }} />
@@ -601,16 +720,18 @@ export default function SettingsView({
                   Encerrar a conta remove catálogo, pedidos e histórico de importações. A ação não pode ser desfeita. Exclusivo do papel ADMIN.
                 </p>
                 <button
+                  disabled
+                  title={notBuiltTitle}
                   style={{
                     alignSelf: 'flex-start',
                     border: 0,
-                    background: '#fef2f2',
-                    color: '#b91c1c',
+                    background: '#f1f5f9',
+                    color: '#94a3b8',
                     borderRadius: '999px',
                     padding: '12px 20px',
                     fontSize: '12.5px',
                     fontWeight: 500,
-                    cursor: 'pointer'
+                    cursor: 'not-allowed'
                   }}
                 >
                   Encerrar conta
@@ -630,16 +751,17 @@ export default function SettingsView({
             </h2>
             {isAdmin && (
               <button
+                disabled
+                title={notBuiltTitle}
                 style={{
                   border: 0,
-                  background: accentColor,
-                  color: '#ffffff',
+                  background: '#f1f5f9',
+                  color: '#94a3b8',
                   borderRadius: '999px',
                   padding: '11px 20px',
                   fontSize: '12.5px',
                   fontWeight: 500,
-                  boxShadow: `0 14px 28px ${accentGlow}`,
-                  cursor: 'pointer'
+                  cursor: 'not-allowed'
                 }}
               >
                 Convidar pessoa
@@ -647,8 +769,18 @@ export default function SettingsView({
             )}
           </div>
           <div style={{ padding: '0 30px 12px 30px', display: 'flex', flexDirection: 'column' }}>
-            {team.map((p, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '15px 0', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+            {teamLoading && (
+              <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '12.5px', color: '#94a3b8' }}>
+                Carregando equipe…
+              </div>
+            )}
+            {!teamLoading && teamError && (
+              <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '12.5px', color: '#b91c1c' }}>
+                {teamError}
+              </div>
+            )}
+            {!teamLoading && !teamError && team.map((p, idx) => (
+              <div key={p.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '15px 0', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '13px', minWidth: 0 }}>
                   <span style={{ width: '40px', height: '40px', borderRadius: '999px', background: accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: '12px', fontWeight: 600, color: accentHover }}>
                     {initials(p.name)}
@@ -662,14 +794,16 @@ export default function SettingsView({
                   <span style={{ fontSize: '11px', letterSpacing: '0.1em', fontWeight: 600, color: accentColor }}>{p.role}</span>
                   <StatusBadge status={p.status} accentSoft={accentSoft} accentHover={accentHover} />
                   <button
+                    disabled
+                    title={notBuiltTitle}
                     style={{
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid #f1f5f9',
                       background: '#ffffff',
-                      color: '#475569',
+                      color: '#94a3b8',
                       borderRadius: '999px',
                       padding: '8px 15px',
                       fontSize: '12px',
-                      cursor: 'pointer'
+                      cursor: 'not-allowed'
                     }}
                   >
                     Editar
@@ -860,6 +994,7 @@ export default function SettingsView({
                   <button
                     onClick={() => handleRevokeSession(ss.id)}
                     disabled={ss.current || isGone || isRevokingThis}
+                    title="Autenticação stateless (JWT) — não há sessões reais no servidor para encerrar."
                     style={{
                       border: `1px solid ${isGone || ss.current ? '#f1f5f9' : '#fecaca'}`,
                       background: '#ffffff',

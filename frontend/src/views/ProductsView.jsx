@@ -163,7 +163,12 @@ export default function ProductsView({
         if (err.name === 'AbortError') return;
         setListError(err.message || 'Não foi possível carregar os produtos agora.');
       })
-      .finally(() => setLoadingList(false));
+      .finally(() => {
+        // Uma requisição cancelada (StrictMode remontando o efeito, ou o usuário trocando
+        // o filtro rápido) nunca pode desligar o loading — só quem ainda está "vivo" pode,
+        // senão a tela pisca "Nada encontrado" com contagem zerada antes do fetch real chegar.
+        if (!controller.signal.aborted) setLoadingList(false);
+      });
 
     return () => controller.abort();
   }, [page, debouncedQuery, filter, refreshTick]);

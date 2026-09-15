@@ -1,122 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import StatusBadge, { getStatusStyle } from '../components/StatusBadge';
+import { getToken } from '../utils/auth';
 
-export default function PdvView({
-  accentColor = '#2563eb'
-}) {
-  const [selectedTable, setSelectedTable] = useState(7);
-  const [tables, setTables] = useState([
-    { num: '01', zone: 'Salão principal', status: 'Livre', seats: 2 },
-    { num: '02', zone: 'Salão principal', status: 'Ocupada', seats: 4, since: '18 min', value: 'R$ 184,00' },
-    { num: '03', zone: 'Salão principal', status: 'Livre', seats: 4 },
-    { num: '04', zone: 'Salão principal', status: 'Reservada', seats: 6, at: '20:30' },
-    { num: '05', zone: 'Salão principal', status: 'Ocupada', seats: 2, since: '42 min', value: 'R$ 96,50' },
-    { num: '06', zone: 'Salão principal', status: 'Conta pedida', seats: 4, since: '1h 12', value: 'R$ 412,00' },
-    { num: '07', zone: 'Salão principal', status: 'Ocupada', seats: 4, since: '27 min', value: 'R$ 312,90' },
-    { num: '08', zone: 'Salão principal', status: 'Livre', seats: 2 },
-    { num: '09', zone: 'Varanda', status: 'Ocupada', seats: 6, since: '8 min', value: 'R$ 78,00' },
-    { num: '10', zone: 'Varanda', status: 'Livre', seats: 4 },
-    { num: '11', zone: 'Varanda', status: 'Reservada', seats: 8, at: '21:00' },
-    { num: '12', zone: 'Varanda', status: 'Livre', seats: 4 },
-    { num: '13', zone: 'Varanda', status: 'Ocupada', seats: 2, since: '35 min', value: 'R$ 143,20' },
-    { num: '14', zone: 'Varanda', status: 'Livre', seats: 6 }
-  ]);
+const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:8080';
 
-  const [comandas, setComandas] = useState({
-    7: {
-      table: '07',
-      people: '4 pessoas',
-      elapsed: '27 min',
-      waiter: 'Atend. Bruno',
-      status: 'Em preparo',
-      items: [
-        { qty: 2, name: 'Risoto de cogumelos', note: '1 sem parmesão', price: 'R$ 118,00' },
-        { qty: 1, name: 'Salada de burrata', note: 'entrada', price: 'R$ 52,00' },
-        { qty: 4, name: 'Água com gás 500ml', note: '', price: 'R$ 36,00' },
-        { qty: 1, name: 'Vinho Malbec (taça)', note: 'adicionado 19:42', price: 'R$ 48,00' },
-        { qty: 2, name: 'Petit gâteau', note: 'sobremesa · aguardando', price: 'R$ 58,90' }
-      ],
-      subtotal: 'R$ 312,90',
-      service: 'R$ 31,29',
-      total: 'R$ 344,19'
-    },
-    2: {
-      table: '02',
-      people: '4 pessoas',
-      elapsed: '18 min',
-      waiter: 'Atend. Larissa',
-      status: 'Em preparo',
-      items: [
-        { qty: 2, name: 'Pizza margherita', note: 'massa fina', price: 'R$ 124,00' },
-        { qty: 3, name: 'Chope pilsen 500ml', note: '', price: 'R$ 60,00' }
-      ],
-      subtotal: 'R$ 184,00',
-      service: 'R$ 18,40',
-      total: 'R$ 202,40'
-    },
-    5: {
-      table: '05',
-      people: '2 pessoas',
-      elapsed: '42 min',
-      waiter: 'Atend. Bruno',
-      status: 'Em preparo',
-      items: [
-        { qty: 1, name: 'Fettuccine ao pesto', note: '', price: 'R$ 62,50' },
-        { qty: 2, name: 'Suco de laranja', note: 'sem açúcar', price: 'R$ 34,00' }
-      ],
-      subtotal: 'R$ 96,50',
-      service: 'R$ 9,65',
-      total: 'R$ 106,15'
-    },
-    6: {
-      table: '06',
-      people: '4 pessoas',
-      elapsed: '1h 12',
-      waiter: 'Atend. Larissa',
-      status: 'Conta pedida',
-      items: [
-        { qty: 2, name: 'Picanha na chapa', note: 'ao ponto', price: 'R$ 268,00' },
-        { qty: 4, name: 'Caipirinha', note: '', price: 'R$ 144,00' }
-      ],
-      subtotal: 'R$ 412,00',
-      service: 'R$ 41,20',
-      total: 'R$ 453,20'
-    },
-    9: {
-      table: '09',
-      people: '6 pessoas',
-      elapsed: '8 min',
-      waiter: 'Atend. Kaio',
-      status: 'Pendente',
-      items: [
-        { qty: 3, name: 'Couvert de pães', note: '', price: 'R$ 36,00' },
-        { qty: 3, name: 'Água sem gás', note: '', price: 'R$ 42,00' }
-      ],
-      subtotal: 'R$ 78,00',
-      service: 'R$ 7,80',
-      total: 'R$ 85,80'
-    },
-    13: {
-      table: '13',
-      people: '2 pessoas',
-      elapsed: '35 min',
-      waiter: 'Atend. Kaio',
-      status: 'Em preparo',
-      items: [
-        { qty: 1, name: 'Moqueca individual', note: 'sem pimenta', price: 'R$ 98,00' },
-        { qty: 1, name: 'Arroz de coco', note: '', price: 'R$ 24,00' },
-        { qty: 2, name: 'Limonada suíça', note: '', price: 'R$ 21,20' }
-      ],
-      subtotal: 'R$ 143,20',
-      service: 'R$ 14,32',
-      total: 'R$ 157,52'
+// Planta do salão: o backend só conhece uma mesa quando ela é aberta (uma
+// comanda), não existe cadastro de mesa física. Esta planta fixa (número,
+// zona, lugares) é local ao frontend e serve só de referência visual; o
+// status real (Livre/Ocupada) e os dados de consumo vêm da API por cima dela.
+const FLOOR_PLAN = [
+  { num: '01', zone: 'Salão principal', seats: 2 },
+  { num: '02', zone: 'Salão principal', seats: 4 },
+  { num: '03', zone: 'Salão principal', seats: 4 },
+  { num: '04', zone: 'Salão principal', seats: 6 },
+  { num: '05', zone: 'Salão principal', seats: 2 },
+  { num: '06', zone: 'Salão principal', seats: 4 },
+  { num: '07', zone: 'Salão principal', seats: 4 },
+  { num: '08', zone: 'Salão principal', seats: 2 },
+  { num: '09', zone: 'Varanda', seats: 6 },
+  { num: '10', zone: 'Varanda', seats: 4 },
+  { num: '11', zone: 'Varanda', seats: 8 },
+  { num: '12', zone: 'Varanda', seats: 4 },
+  { num: '13', zone: 'Varanda', seats: 2 },
+  { num: '14', zone: 'Varanda', seats: 6 }
+];
+
+async function apiRequest(path, options = {}) {
+  const token = getToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {})
     }
   });
 
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message = body?.details?.length ? body.details.join(' ') : (body?.message || 'Não foi possível completar a operação.');
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+const brl = n => 'R$ ' + Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function formatElapsed(openedAt) {
+  if (!openedAt) return 'Agora';
+  const diffMin = Math.max(0, Math.round((Date.now() - new Date(openedAt).getTime()) / 60000));
+  if (diffMin < 1) return 'Agora';
+  if (diffMin < 60) return `${diffMin} min`;
+  const hours = Math.floor(diffMin / 60);
+  const minutes = diffMin % 60;
+  return `${hours}h ${minutes}`;
+}
+
+export default function PdvView({
+  accentColor = '#2563eb',
+  userName = ''
+}) {
+  const [selectedTable, setSelectedTable] = useState(1);
+
+  const [openTables, setOpenTables] = useState([]);
+  const [loadingList, setLoadingList] = useState(true);
+  const [listError, setListError] = useState(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
   const [modalAction, setModalAction] = useState(null); // 'addItem', 'closeAccount', 'openTable'
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemPrice, setNewItemPrice] = useState('');
+  const [openTableForm, setOpenTableForm] = useState({ tableNumber: '', customerName: '' });
+  const [addItemForm, setAddItemForm] = useState({ productId: '', quantity: 1 });
   const [isBusy, setIsBusy] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [closeSnapshot, setCloseSnapshot] = useState({ total: 'R$ 0,00', itemCount: 0 });
 
   const mix = (pct, other) => `color-mix(in oklab, ${accentColor} ${pct}%, ${other})`;
   const accentHover = mix(85, '#0f172a');
@@ -124,6 +87,72 @@ export default function PdvView({
   const accentGlow = `color-mix(in oklab, ${accentColor} 32%, transparent)`;
 
   const tableLegend = ['Livre', 'Ocupada', 'Reservada', 'Conta pedida'];
+  const zoneNames = ['Salão principal', 'Varanda'];
+
+  // Listagem das mesas abertas — cancela a requisição anterior ainda em voo
+  // (StrictMode remontando o efeito, ou uma ação disparando um novo refreshTick).
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingList(true);
+    setListError(null);
+
+    apiRequest('/api/v1/pdv/tables', { signal: controller.signal })
+      .then(data => setOpenTables(data || []))
+      .catch(err => {
+        if (err.name === 'AbortError') return;
+        setListError(err.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingList(false);
+      });
+
+    return () => controller.abort();
+  }, [refreshTick]);
+
+  // Catálogo de produtos para o seletor de item — só carrega quando o modal abre.
+  useEffect(() => {
+    if (modalAction !== 'addItem') return;
+    const controller = new AbortController();
+    setLoadingProducts(true);
+
+    apiRequest('/api/v1/products?status=ACTIVE&size=100', { signal: controller.signal })
+      .then(data => setProducts((data?.page?.content) || []))
+      .catch(err => {
+        if (err.name === 'AbortError') return;
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingProducts(false);
+      });
+
+    return () => controller.abort();
+  }, [modalAction]);
+
+  // ESC key handler for modals
+  useEffect(() => {
+    const handleKeyDown = e => {
+      if (e.key === 'Escape' && modalAction && !isBusy) {
+        setModalAction(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalAction, isBusy]);
+
+  const selectedOpenTable = openTables.find(t => t.number === selectedTable) || null;
+
+  const tables = FLOOR_PLAN.map(entry => {
+    const numInt = parseInt(entry.num, 10);
+    const open = openTables.find(t => t.number === numInt);
+    if (!open) {
+      return { ...entry, status: 'Livre' };
+    }
+    return {
+      ...entry,
+      status: 'Ocupada',
+      value: brl(open.total),
+      since: formatElapsed(open.openedAt)
+    };
+  });
 
   const emptyOrder = {
     table: String(selectedTable).padStart(2, '0'),
@@ -137,95 +166,90 @@ export default function PdvView({
     total: 'R$ 0,00'
   };
 
-  const currentOrder = comandas[selectedTable] || emptyOrder;
-
-  // ESC key handler for modals
-  React.useEffect(() => {
-    const handleKeyDown = e => {
-      if (e.key === 'Escape' && modalAction && !isBusy) {
-        setModalAction(null);
+  const currentOrder = selectedOpenTable
+    ? {
+        table: String(selectedOpenTable.number).padStart(2, '0'),
+        people: selectedOpenTable.customerName,
+        elapsed: formatElapsed(selectedOpenTable.openedAt),
+        waiter: userName ? `Atend. ${userName}` : 'Atend. PDV',
+        status: 'Ocupada',
+        items: (selectedOpenTable.items || []).map(i => ({
+          qty: i.quantity,
+          name: i.productName,
+          note: '',
+          price: brl(i.subtotal)
+        })),
+        subtotal: brl(selectedOpenTable.total),
+        service: brl(0),
+        total: brl(selectedOpenTable.total)
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalAction, isBusy]);
+    : emptyOrder;
+
+  const handleOpenTableSubmit = e => {
+    e.preventDefault();
+    if (isBusy || !openTableForm.tableNumber || !openTableForm.customerName) return;
+    setIsBusy(true);
+    setActionError(null);
+
+    apiRequest('/api/v1/pdv/tables', {
+      method: 'POST',
+      body: JSON.stringify({
+        tableNumber: openTableForm.tableNumber,
+        customerName: openTableForm.customerName
+      })
+    })
+      .then(data => {
+        setOpenTables(prev => [...prev, data]);
+        setSelectedTable(data.number);
+        setOpenTableForm({ tableNumber: '', customerName: '' });
+        setModalAction(null);
+      })
+      .catch(err => setActionError(err.message))
+      .finally(() => setIsBusy(false));
+  };
 
   const handleAddItemSubmit = e => {
     e.preventDefault();
-    if (!newItemName || isBusy) return;
+    if (isBusy || !addItemForm.productId || !selectedOpenTable) return;
     setIsBusy(true);
+    setActionError(null);
 
-    setTimeout(() => {
-      const priceVal = parseFloat(newItemPrice.replace(',', '.')) || 35.0;
-      const priceFormatted = `R$ ${priceVal.toFixed(2).replace('.', ',')}`;
-
-      setComandas(prev => {
-        const existing = prev[selectedTable] || {
-          table: String(selectedTable).padStart(2, '0'),
-          people: '2 pessoas',
-          elapsed: 'Agora',
-          waiter: 'Atend. Salão',
-          status: 'Em preparo',
-          items: [],
-          subtotal: 'R$ 0,00',
-          service: 'R$ 0,00',
-          total: 'R$ 0,00'
-        };
-
-        const updatedItems = [...existing.items, { qty: 1, name: newItemName, note: 'novo', price: priceFormatted }];
-        return {
-          ...prev,
-          [selectedTable]: {
-            ...existing,
-            status: 'Em preparo',
-            items: updatedItems,
-            subtotal: 'R$ 347,90',
-            service: 'R$ 34,79',
-            total: 'R$ 382,69'
-          }
-        };
-      });
-
-      setTables(prev =>
-        prev.map(t =>
-          Number(t.num) === selectedTable
-            ? { ...t, status: 'Ocupada', value: 'R$ 382,69', since: 'Agora' }
-            : t
-        )
-      );
-
-      setNewItemName('');
-      setNewItemPrice('');
-      setIsBusy(false);
-      setModalAction(null);
-    }, 400);
+    apiRequest(`/api/v1/pdv/tables/${selectedOpenTable.id}/items`, {
+      method: 'POST',
+      body: JSON.stringify({
+        productId: addItemForm.productId,
+        quantity: Number(addItemForm.quantity) || 1
+      })
+    })
+      .then(data => {
+        setOpenTables(prev => prev.map(t => (t.id === data.id ? data : t)));
+        setAddItemForm({ productId: '', quantity: 1 });
+        setModalAction(null);
+      })
+      .catch(err => setActionError(err.message))
+      .finally(() => setIsBusy(false));
   };
 
   const handleCloseAccount = () => {
-    if (isBusy) return;
+    if (isBusy || !selectedOpenTable) return;
     setIsBusy(true);
+    setActionError(null);
 
-    setTimeout(() => {
-      setTables(prev =>
-        prev.map(t =>
-          Number(t.num) === selectedTable
-            ? { ...t, status: 'Livre', value: undefined, since: undefined }
-            : t
-        )
-      );
-
-      setComandas(prev => {
-        const next = { ...prev };
-        delete next[selectedTable];
-        return next;
-      });
-
-      setIsBusy(false);
-      setModalAction(null);
-    }, 500);
+    apiRequest(`/api/v1/pdv/tables/${selectedOpenTable.id}/close`, { method: 'POST' })
+      .then(data => {
+        setOpenTables(prev => prev.filter(t => t.id !== data.id));
+        setModalAction(null);
+      })
+      .catch(err => {
+        if (err.message && err.message.includes('outro terminal')) {
+          setActionError('Esta mesa já foi fechada em outro terminal — atualize a tela.');
+          setRefreshTick(t => t + 1);
+        } else {
+          setActionError(err.message);
+        }
+      })
+      .finally(() => setIsBusy(false));
   };
-
-  const zoneNames = ['Salão principal', 'Varanda'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -269,7 +293,11 @@ export default function PdvView({
             Reservas
           </button>
           <button
-            onClick={() => setModalAction('openTable')}
+            onClick={() => {
+              setActionError(null);
+              setOpenTableForm({ tableNumber: !selectedOpenTable ? String(selectedTable).padStart(2, '0') : '', customerName: '' });
+              setModalAction('openTable');
+            }}
             style={{
               border: 0,
               background: accentColor,
@@ -310,7 +338,46 @@ export default function PdvView({
             minWidth: 0
           }}
         >
-          {zoneNames.map(zName => {
+          {listError && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center', padding: '24px 0' }}>
+              <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: '12px', height: '12px', background: '#b91c1c', borderRadius: '2px', transform: 'rotate(45deg)' }} />
+              </span>
+              <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '19px', color: '#334155' }}>
+                Não foi possível carregar o mapa de mesas
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#94a3b8' }}>{listError}</div>
+              <button
+                onClick={() => setRefreshTick(t => t + 1)}
+                style={{
+                  border: '1px solid #bfdbfe',
+                  background: '#ffffff',
+                  color: accentColor,
+                  borderRadius: '999px',
+                  padding: '13px 22px',
+                  fontSize: '13.5px',
+                  fontWeight: 500,
+                  minHeight: '48px',
+                  cursor: 'pointer'
+                }}
+              >
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {!listError && loadingList && openTables.length === 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center', padding: '24px 0' }}>
+              <span style={{ width: '46px', height: '46px', borderRadius: '999px', background: accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ width: '12px', height: '12px', background: accentColor, borderRadius: '2px', transform: 'rotate(45deg)' }} />
+              </span>
+              <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '19px', color: '#334155' }}>
+                Carregando mapa de mesas…
+              </div>
+            </div>
+          )}
+
+          {!listError && !(loadingList && openTables.length === 0) && zoneNames.map(zName => {
             const list = tables.filter(t => t.zone === zName);
             const busy = list.filter(t => t.status !== 'Livre').length;
 
@@ -340,7 +407,10 @@ export default function PdvView({
                     return (
                       <button
                         key={t.num}
-                        onClick={() => setSelectedTable(Number(t.num))}
+                        onClick={() => {
+                          setActionError(null);
+                          setSelectedTable(Number(t.num));
+                        }}
                         style={{
                           position: 'relative',
                           display: 'flex',
@@ -501,25 +571,40 @@ export default function PdvView({
             </div>
           </div>
 
+          {actionError && !modalAction && (
+            <div style={{ margin: '16px 26px 0 26px', background: '#fef2f2', borderRadius: '14px', padding: '12px 16px', fontSize: '12.5px', color: '#b91c1c', lineHeight: 1.5 }}>
+              {actionError}
+            </div>
+          )}
+
           <div style={{ padding: '18px 26px 26px 26px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <button
-              onClick={() => setModalAction('addItem')}
+              onClick={() => {
+                setActionError(null);
+                setAddItemForm({ productId: '', quantity: 1 });
+                setModalAction('addItem');
+              }}
+              disabled={!selectedOpenTable}
               style={{
-                border: '1px solid #bfdbfe',
+                border: !selectedOpenTable ? '1px solid #e2e8f0' : '1px solid #bfdbfe',
                 background: '#ffffff',
-                color: accentColor,
+                color: !selectedOpenTable ? '#94a3b8' : accentColor,
                 borderRadius: '999px',
                 padding: '14px',
                 fontSize: '13.5px',
                 fontWeight: 500,
                 minHeight: '50px',
-                cursor: 'pointer'
+                cursor: !selectedOpenTable ? 'not-allowed' : 'pointer'
               }}
             >
               Adicionar item
             </button>
             <button
-              onClick={() => setModalAction('closeAccount')}
+              onClick={() => {
+                setActionError(null);
+                setCloseSnapshot({ total: currentOrder.total, itemCount: currentOrder.items.length });
+                setModalAction('closeAccount');
+              }}
               disabled={currentOrder.items.length === 0}
               style={{
                 border: 0,
@@ -555,6 +640,139 @@ export default function PdvView({
           </div>
         </div>
       </div>
+
+      {/* MODAL: ABRIR MESA (Backdrop click & ESC to close, except when busy) */}
+      {modalAction === 'openTable' && (
+        <div
+          onClick={() => {
+            if (!isBusy) setModalAction(null);
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 80,
+            background: 'rgba(15,23,42,0.45)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '430px',
+              background: '#ffffff',
+              borderRadius: '26px',
+              padding: '32px',
+              boxShadow: '0 40px 90px rgba(2,6,23,0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '18px'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '10.5px', letterSpacing: '0.15em', textTransform: 'uppercase', color: accentColor, fontWeight: 600 }}>
+                Nova comanda
+              </div>
+              <h2 style={{ margin: 0, fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700, fontSize: '23px', letterSpacing: '-0.02em', color: '#1e293b' }}>
+                Abrir mesa
+              </h2>
+            </div>
+
+            <form onSubmit={handleOpenTableSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>Número da mesa</label>
+                <select
+                  required
+                  value={openTableForm.tableNumber}
+                  onChange={e => setOpenTableForm(f => ({ ...f, tableNumber: e.target.value }))}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '14px',
+                    padding: '12px 16px',
+                    fontSize: '13.5px',
+                    color: '#1e293b',
+                    background: '#ffffff'
+                  }}
+                >
+                  <option value="">Selecione uma mesa livre</option>
+                  {tables.filter(t => t.status === 'Livre').map(t => (
+                    <option key={t.num} value={t.num}>
+                      Mesa {t.num} — {t.zone} ({t.seats} lugares)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>Nome do cliente</label>
+                <input
+                  type="text"
+                  required
+                  value={openTableForm.customerName}
+                  onChange={e => setOpenTableForm(f => ({ ...f, customerName: e.target.value }))}
+                  placeholder="ex: João"
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '14px',
+                    padding: '12px 16px',
+                    fontSize: '13.5px',
+                    color: '#1e293b',
+                    background: '#ffffff'
+                  }}
+                />
+              </div>
+
+              {actionError && (
+                <div style={{ background: '#fef2f2', borderRadius: '14px', padding: '12px 16px', fontSize: '12.5px', color: '#b91c1c', lineHeight: 1.5 }}>
+                  {actionError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="submit"
+                  disabled={isBusy}
+                  style={{
+                    flex: 1,
+                    border: 0,
+                    background: isBusy ? '#94a3b8' : accentColor,
+                    color: '#ffffff',
+                    borderRadius: '999px',
+                    padding: '13px 24px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    boxShadow: isBusy ? 'none' : `0 14px 28px ${accentGlow}`,
+                    cursor: isBusy ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isBusy ? 'Abrindo...' : 'Abrir mesa'}
+                </button>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => setModalAction(null)}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    background: '#ffffff',
+                    color: '#475569',
+                    borderRadius: '999px',
+                    padding: '13px 20px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: isBusy ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: ADICIONAR ITEM (Backdrop click & ESC to close, except when busy) */}
       {modalAction === 'addItem' && (
@@ -599,39 +817,53 @@ export default function PdvView({
 
             <form onSubmit={handleAddItemSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>Nome do produto / prato</label>
-                <input
-                  type="text"
+                <label style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>Produto</label>
+                <select
                   required
-                  value={newItemName}
-                  onChange={e => setNewItemName(e.target.value)}
-                  placeholder="ex: Filé Mignon ao Molho Madeira"
+                  value={addItemForm.productId}
+                  onChange={e => setAddItemForm(f => ({ ...f, productId: e.target.value }))}
                   style={{
                     border: '1px solid #cbd5e1',
                     borderRadius: '14px',
                     padding: '12px 16px',
                     fontSize: '13.5px',
-                    color: '#1e293b'
+                    color: '#1e293b',
+                    background: '#ffffff'
+                  }}
+                >
+                  <option value="">{loadingProducts ? 'Carregando produtos...' : 'Selecione um produto'}</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {brl(p.price)} (estoque: {p.stockQuantity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>Quantidade</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={addItemForm.quantity}
+                  onChange={e => setAddItemForm(f => ({ ...f, quantity: e.target.value }))}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '14px',
+                    padding: '12px 16px',
+                    fontSize: '13.5px',
+                    color: '#1e293b',
+                    background: '#ffffff'
                   }}
                 />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 500, color: '#475569' }}>Preço unitário (R$)</label>
-                <input
-                  type="text"
-                  value={newItemPrice}
-                  onChange={e => setNewItemPrice(e.target.value)}
-                  placeholder="ex: 68,00"
-                  style={{
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '14px',
-                    padding: '12px 16px',
-                    fontSize: '13.5px',
-                    color: '#1e293b'
-                  }}
-                />
-              </div>
+              {actionError && (
+                <div style={{ background: '#fef2f2', borderRadius: '14px', padding: '12px 16px', fontSize: '12.5px', color: '#b91c1c', lineHeight: 1.5 }}>
+                  {actionError}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button
@@ -715,9 +947,15 @@ export default function PdvView({
                 Fechar Mesa {currentOrder.table}?
               </h2>
               <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.6, color: '#64748b' }}>
-                Total a receber: <strong>{currentOrder.total}</strong> ({currentOrder.items.length} itens consumidos). A mesa voltará ao estado Livre.
+                Total a receber: <strong>{closeSnapshot.total}</strong> ({closeSnapshot.itemCount} itens consumidos). A mesa voltará ao estado Livre.
               </p>
             </div>
+
+            {actionError && (
+              <div style={{ background: '#fef2f2', borderRadius: '14px', padding: '12px 16px', fontSize: '12.5px', color: '#b91c1c', lineHeight: 1.5 }}>
+                {actionError}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
               <button

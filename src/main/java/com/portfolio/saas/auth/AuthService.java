@@ -1,6 +1,7 @@
 package com.portfolio.saas.auth;
 
 import com.portfolio.saas.auth.dto.AuthResponse;
+import com.portfolio.saas.auth.dto.ChangePasswordRequest;
 import com.portfolio.saas.auth.dto.LoginRequest;
 import com.portfolio.saas.auth.dto.RegisterTenantRequest;
 import com.portfolio.saas.auth.dto.TenantResponse;
@@ -116,5 +117,21 @@ public class AuthService {
                 UserResponse.fromUser(user),
                 TenantResponse.fromTenant(tenant)
         );
+    }
+
+    @Transactional
+    public void changePassword(String userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("Usuário não encontrado."));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new BusinessException("Senha atual incorreta.");
+        }
+
+        // JWT stateless: trocar a senha não invalida tokens já emitidos, que continuam
+        // válidos até expirar naturalmente. Limitação conhecida da arquitetura atual,
+        // não um bug desta troca — não há blocklist/tabela de sessão pra revogar.
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
     }
 }

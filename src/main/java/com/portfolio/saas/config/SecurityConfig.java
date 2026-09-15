@@ -1,6 +1,7 @@
 package com.portfolio.saas.config;
 
 import com.portfolio.saas.auth.JwtAuthenticationFilter;
+import com.portfolio.saas.tenant.StorefrontTenantFilter;
 import com.portfolio.saas.tenant.TenantFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,10 +30,12 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final TenantFilter tenantFilter;
+    private final StorefrontTenantFilter storefrontTenantFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, TenantFilter tenantFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, TenantFilter tenantFilter, StorefrontTenantFilter storefrontTenantFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.tenantFilter = tenantFilter;
+        this.storefrontTenantFilter = storefrontTenantFilter;
     }
 
     @Bean
@@ -44,6 +47,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
+                                "/api/v1/storefront/**",
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/swagger-ui/**",
@@ -52,7 +56,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(tenantFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(tenantFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(storefrontTenantFilter, TenantFilter.class);
 
         return http.build();
     }
@@ -64,6 +69,8 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174",
                 "http://localhost:8080"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

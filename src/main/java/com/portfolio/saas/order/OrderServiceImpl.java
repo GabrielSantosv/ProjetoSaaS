@@ -43,6 +43,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order order = new Order(request.customerId(), OrderStatus.PENDING, BigDecimal.ZERO, request.channel());
+        order.setDeliveryAddress(request.deliveryAddress());
+        order.setPaymentMethod(request.paymentMethod());
         BigDecimal total = BigDecimal.ZERO;
 
         for (OrderItemRequest itemRequest : request.items()) {

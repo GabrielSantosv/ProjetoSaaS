@@ -37,6 +37,12 @@ public class Order extends BaseEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
+    @Column(name = "delivery_address", length = 500)
+    private String deliveryAddress;
+
+    @Column(name = "payment_method", length = 60)
+    private String paymentMethod;
+
     public Order() {
         super();
     }
@@ -92,5 +98,21 @@ public class Order extends BaseEntity {
 
     public void setItems(List<OrderItem> items) {
         this.items = items;
+    }
+
+    public String getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public void setDeliveryAddress(String deliveryAddress) {
+        this.deliveryAddress = deliveryAddress;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 }

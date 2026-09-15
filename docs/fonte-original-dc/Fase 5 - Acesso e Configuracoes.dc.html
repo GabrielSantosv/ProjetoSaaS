@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="./permissions.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; -webkit-font-smoothing: antialiased; }
+  a { color: #2563eb; text-decoration: none; }
+  a:hover { color: #1d4ed8; }
+  input, button, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  input:focus, textarea:focus { outline: none; }
+  ::selection { background: #dbeafe; }
+</style>
+</helmet>
+
+<sc-if value="{{ isAuth }}" hint-placeholder-val="{{ true }}">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); min-height: 100vh">
+
+    <div style="background: #0f172a; color: #f1f5f9; padding: 56px 52px; display: flex; flex-direction: column; justify-content: space-between; gap: 48px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div style="width: 38px; height: 38px; border-radius: 999px; background: {{ accent }}; display: flex; align-items: center; justify-content: center; flex: none">
+          <span style="width: 13px; height: 13px; background: #ffffff; border-radius: 3px; transform: rotate(45deg)"></span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em; color: #ffffff">Comércio</div>
+          <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b">Área interna</div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 22px; max-width: 460px">
+        <div style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ accentOnDark }}; font-weight: 600">Um sistema, todos os canais</div>
+        <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 38px; line-height: 1.12; letter-spacing: -0.025em; color: #ffffff; text-wrap: pretty">Salão, delivery e vitrine no mesmo catálogo.</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #94a3b8; text-wrap: pretty">Importe planilhas do fornecedor, acompanhe o processamento linha a linha e venda com o estoque já conciliado.</p>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px">
+          <sc-for list="{{ pitch }}" as="pi" hint-placeholder-count="3">
+            <div style="display: flex; align-items: center; gap: 13px">
+              <span style="width: 30px; height: 30px; border-radius: 999px; background: rgba(148,163,184,0.16); display: flex; align-items: center; justify-content: center; flex: none">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ accentOnDark }}"></span>
+              </span>
+              <span style="font-size: 13px; color: #cbd5e1">{{ pi }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #64748b">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: #22c55e"></span>
+        Todos os serviços operando normalmente
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: center; padding: 56px 40px; min-width: 0">
+      <div style="width: 100%; max-width: 420px; background: #ffffff; border-radius: 28px; padding: 40px; box-shadow: 0 28px 60px rgba(2,6,23,0.07); display: flex; flex-direction: column; gap: 26px">
+
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <div style="font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">{{ authEyebrow }}</div>
+          <h1 style="margin: 8px 0 8px 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 32px; line-height: 1.1; letter-spacing: -0.025em; color: #1e293b">{{ authTitle }}</h1>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.6; color: #64748b; text-wrap: pretty">{{ authLead }}</p>
+        </div>
+
+        <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 16px">
+            <label style="display: flex; flex-direction: column; gap: 7px">
+              <span style="font-size: 12px; color: #64748b">Nome completo</span>
+              <input value="{{ fName }}" onChange="{{ setFName }}" placeholder="Helena Braga" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 13px 15px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 7px">
+              <span style="font-size: 12px; color: #64748b">Nome do estabelecimento</span>
+              <input value="{{ fStore }}" onChange="{{ setFStore }}" placeholder="Restaurante Aurora" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 13px 15px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+            </label>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasAuthError }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 11px; background: #fef2f2; border-radius: 16px; padding: 13px 16px">
+            <span style="width: 26px; height: 26px; border-radius: 999px; background: #fee2e2; display: flex; align-items: center; justify-content: center; flex: none">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #b91c1c"></span>
+            </span>
+            <span style="font-size: 12.5px; color: #b91c1c; line-height: 1.5">{{ authError }}</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ recoverSent }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: 11px; background: #f0fdf4; border-radius: 16px; padding: 13px 16px">
+            <span style="width: 26px; height: 26px; border-radius: 999px; background: #dcfce7; display: flex; align-items: center; justify-content: center; flex: none">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #15803d"></span>
+            </span>
+            <span style="font-size: 12.5px; color: #15803d; line-height: 1.5">Link de redefinição enviado.</span>
+          </div>
+        </sc-if>
+
+        <div style="display: flex; flex-direction: column; gap: 16px">
+          <label style="display: flex; flex-direction: column; gap: 7px">
+            <span style="font-size: 12px; color: #64748b">E-mail de trabalho</span>
+            <input value="{{ fEmail }}" onChange="{{ setFEmail }}" placeholder="helena@aurora.com.br" style="border: 1px solid {{ emailBorder }}; background: #f8fafc; border-radius: 12px; padding: 13px 15px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+          </label>
+          <sc-if value="{{ showPassField }}" hint-placeholder-val="{{ true }}">
+          <label style="display: flex; flex-direction: column; gap: 7px">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px">
+              <span style="font-size: 12px; color: #64748b">Senha</span>
+              <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ goRecover }}" style="border: 0; background: transparent; padding: 0; font-size: 11.5px; color: {{ accent }}" style-hover="color: {{ accentHover }}">Esqueci a senha</button>
+              </sc-if>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 4px 6px 4px 15px" style-focus-within="border-color: {{ accent }}">
+              <input value="{{ fPass }}" onChange="{{ setFPass }}" type="{{ passType }}" placeholder="mínimo 8 caracteres" style="border: 0; background: transparent; flex: 1; min-width: 0; padding: 9px 0; font-size: 13.5px; color: #334155" />
+              <button onClick="{{ togglePass }}" style="border: 0; background: #ffffff; color: {{ accent }}; border-radius: 999px; padding: 8px 14px; font-size: 11.5px; font-weight: 500; flex: none">{{ passToggleLabel }}</button>
+            </div>
+          </label>
+          </sc-if>
+
+          <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; gap: 6px">
+                <sc-for list="{{ strengthBars }}" as="b" hint-placeholder-count="4">
+                  <span style="flex: 1; height: 5px; border-radius: 999px; background: {{ b }}"></span>
+                </sc-for>
+              </div>
+              <span style="font-size: 11.5px; color: {{ strengthFg }}">{{ strengthLabel }}</span>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ isSignup }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <div style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Seu papel no time</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <sc-for list="{{ roleChips }}" as="r" hint-placeholder-count="4">
+                <button onClick="{{ r.select }}" style="border: {{ r.border }}; background: {{ r.bg }}; color: {{ r.fg }}; border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 500" style-hover="border-color: {{ accent }}">{{ r.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <button onClick="{{ submitAuth }}" style="border: 0; background: {{ authBtnBg }}; color: #ffffff; border-radius: 999px; padding: 15px; font-size: 14px; font-weight: 500; box-shadow: 0 16px 30px {{ accentGlow }}">{{ authCta }}</button>
+          <button onClick="{{ switchAuth }}" style="border: 1px solid #bfdbfe; background: #ffffff; color: {{ accent }}; border-radius: 999px; padding: 14px; font-size: 13.5px; font-weight: 500" style-hover="background: {{ accentSoft }}">{{ authAlt }}</button>
+        </div>
+
+        <p style="margin: 0; font-size: 11.5px; line-height: 1.6; color: #94a3b8; text-align: center; text-wrap: pretty">{{ authFootnote }}</p>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+  <div style="display: flex; min-height: 100vh; background: #f8fafc">
+
+    <aside style="width: 268px; flex: none; background: #0f172a; color: #f1f5f9; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh">
+      <div style="padding: 28px 24px 24px 24px; display: flex; align-items: center; gap: 12px">
+        <div style="width: 38px; height: 38px; border-radius: 999px; background: {{ accent }}; display: flex; align-items: center; justify-content: center; flex: none">
+          <span style="width: 13px; height: 13px; background: #ffffff; border-radius: 3px; transform: rotate(45deg)"></span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em; color: #ffffff">Comércio</div>
+          <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b">Área interna</div>
+        </div>
+      </div>
+
+      <nav style="flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 16px 20px 16px; display: flex; flex-direction: column; gap: 5px">
+        <sc-for list="{{ nav }}" as="item" hint-placeholder-count="7">
+          <button onClick="{{ item.select }}" style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; border: 0; background: transparent; border-radius: 999px; padding: 8px 12px 8px 8px; text-align: left; color: #cbd5e1; font-size: 13.5px; font-weight: 500" style-hover="background: rgba(148,163,184,0.14); color: #ffffff">
+            <sc-if value="{{ item.active }}" hint-placeholder-val="{{ false }}">
+              <span style="position: absolute; inset: 0; background: {{ accent }}; border-radius: 999px; box-shadow: 0 12px 24px {{ accentGlow }}"></span>
+            </sc-if>
+            <span style="position: relative; display: flex; align-items: center; gap: 11px; color: {{ item.fg }}">
+              <span style="width: 30px; height: 30px; border-radius: 999px; background: {{ item.iconBg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                <span style="width: 9px; height: 9px; background: {{ item.iconFg }}; border-radius: {{ item.iconRadius }}; transform: {{ item.iconRotate }}"></span>
+              </span>
+              {{ item.label }}
+            </span>
+            <sc-if value="{{ item.badge }}" hint-placeholder-val="{{ false }}">
+              <span style="position: relative; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 9px; background: {{ item.badgeBg }}; color: {{ item.badgeFg }}">{{ item.badge }}</span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </nav>
+
+      <div style="padding: 14px 22px 24px 22px; flex: none">
+        <div style="background: rgba(148,163,184,0.12); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 9px">
+          <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ accentOnDark }}">Sessão</div>
+          <div style="font-size: 12.5px; color: #cbd5e1; line-height: 1.55">Conectada como {{ userName }}.</div>
+          <button onClick="{{ logout }}" style="margin-top: 4px; align-self: flex-start; border: 0; background: rgba(248,250,252,0.14); color: #f1f5f9; border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 500" style-hover="background: rgba(248,250,252,0.24)">Sair</button>
+        </div>
+      </div>
+    </aside>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+
+      <header style="position: sticky; top: 0; z-index: 5; background: rgba(248,250,252,0.9); backdrop-filter: blur(10px); padding: 22px 44px; display: flex; align-items: center; justify-content: space-between; gap: 24px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <div style="font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Comércio SaaS · Área interna</div>
+          <div style="font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; color: #334155">Configurações</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 16px">
+          <sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}">
+            <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 7px 14px; background: #fffbeb; color: #b45309">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #b45309"></span>Alterações não salvas
+            </span>
+          </sc-if>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 2px">
+              <div style="font-size: 13px; font-weight: 500; color: #1e293b">{{ userName }}</div>
+              <div style="font-size: 9.5px; letter-spacing: 0.14em; color: {{ accent }}; font-weight: 600">{{ userRole }}</div>
+            </div>
+            <div style="width: 40px; height: 40px; border-radius: 999px; background: {{ accentSoft }}; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 14px; color: {{ accentHover }}">{{ initials }}</div>
+          </div>
+        </div>
+      </header>
+
+      <main style="flex: 1; padding: 14px 44px 56px 44px; display: flex; flex-direction: column; gap: 28px">
+
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; flex-wrap: wrap">
+          <div style="display: flex; flex-direction: column; gap: 10px; max-width: 620px">
+            <div style="font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Preferências da conta</div>
+            <h1 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 44px; line-height: 1.05; letter-spacing: -0.025em; color: #1e293b">Configurações</h1>
+            <p style="margin: 0; font-size: 14px; line-height: 1.65; color: #64748b; text-wrap: pretty">Dados do estabelecimento, equipe e regras de importação. Alterações aqui valem para todos os canais de venda.</p>
+          </div>
+          <div style="display: flex; gap: 10px">
+            <button onClick="{{ discard }}" style="border: 1px solid #bfdbfe; background: #ffffff; color: {{ accent }}; border-radius: 999px; padding: 12px 22px; font-size: 13px; font-weight: 500" style-hover="background: {{ accentSoft }}">Descartar</button>
+            <button onClick="{{ save }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 12px 24px; font-size: 13px; font-weight: 500; box-shadow: 0 14px 28px {{ accentGlow }}" style-hover="background: {{ accentHover }}">{{ saveLabel }}</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+            <button onClick="{{ t.select }}" style="border: {{ t.border }}; background: {{ t.bg }}; color: {{ t.fg }}; border-radius: 999px; padding: 10px 18px; font-size: 13px; font-weight: 500" style-hover="border-color: {{ accent }}">{{ t.label }}</button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ tabIsGeral }}" hint-placeholder-val="{{ true }}">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 22px; align-items: start">
+            <div style="background: #ffffff; border-radius: 24px; padding: 30px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 24px; min-width: 0">
+              <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Estabelecimento</div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px">
+                <label style="display: flex; flex-direction: column; gap: 7px">
+                  <span style="font-size: 12px; color: #64748b">Razão social</span>
+                  <input value="{{ s.store }}" onChange="{{ setStore }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 7px">
+                  <span style="font-size: 12px; color: #64748b">CNPJ</span>
+                  <input value="{{ s.cnpj }}" onChange="{{ setCnpj }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155; font-variant-numeric: tabular-nums" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                </label>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px">
+                <label style="display: flex; flex-direction: column; gap: 7px">
+                  <span style="font-size: 12px; color: #64748b">E-mail de contato</span>
+                  <input value="{{ s.email }}" onChange="{{ setEmail }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 7px">
+                  <span style="font-size: 12px; color: #64748b">Telefone</span>
+                  <input value="{{ s.phone }}" onChange="{{ setPhone }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155; font-variant-numeric: tabular-nums" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                </label>
+              </div>
+
+              <div style="height: 1px; background: #f1f5f9"></div>
+
+              <div style="display: flex; flex-direction: column; gap: 14px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Operação</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  <sc-for list="{{ serviceChips }}" as="c" hint-placeholder-count="3">
+                    <button onClick="{{ c.select }}" style="border: {{ c.border }}; background: {{ c.bg }}; color: {{ c.fg }}; border-radius: 999px; padding: 9px 16px; font-size: 12.5px; font-weight: 500">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+                <label style="display: flex; flex-direction: column; gap: 7px; max-width: 220px">
+                  <span style="font-size: 12px; color: #64748b">Taxa de serviço (%)</span>
+                  <input value="{{ s.service }}" onChange="{{ setService }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155; font-variant-numeric: tabular-nums" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                </label>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 22px; min-width: 0">
+              <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 18px">
+                <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Plano</div>
+                <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 14px">
+                  <span style="font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 26px; letter-spacing: -0.02em; color: #334155">Profissional</span>
+                  <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 5px 12px; background: #f0fdf4; color: #15803d">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #15803d"></span>Ativo
+                  </span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px">
+                  <sc-for list="{{ planLines }}" as="pl" hint-placeholder-count="3">
+                    <div style="display: flex; justify-content: space-between; gap: 14px; font-size: 12.5px">
+                      <span style="color: #94a3b8">{{ pl.k }}</span>
+                      <span style="color: #334155; text-align: right">{{ pl.v }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <button onClick="{{ openPlan }}" style="align-self: flex-start; border: 1px solid #bfdbfe; background: #ffffff; color: {{ accent }}; border-radius: 999px; padding: 11px 20px; font-size: 12.5px; font-weight: 500" style-hover="background: {{ accentSoft }}">Gerenciar assinatura</button>
+              </div>
+
+              <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+                <div style="background: #ffffff; border-radius: 24px; padding: 28px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 14px">
+                  <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Zona sensível</div>
+                  <p style="margin: 0; font-size: 12.5px; line-height: 1.6; color: #64748b; text-wrap: pretty">Encerrar a conta remove catálogo, pedidos e histórico de importações. A ação não pode ser desfeita. Exclusivo do papel ADMIN.</p>
+                  <button style="align-self: flex-start; border: 0; background: #fef2f2; color: #b91c1c; border-radius: 999px; padding: 12px 20px; font-size: 12.5px; font-weight: 500">Encerrar conta</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabIsEquipe }}" hint-placeholder-val="{{ false }}">
+          <div style="background: #ffffff; border-radius: 24px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); overflow: hidden">
+            <div style="padding: 26px 30px 20px 30px; display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap">
+              <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: #334155">Equipe</h2>
+              <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ true }}">
+                <button style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 11px 20px; font-size: 12.5px; font-weight: 500; box-shadow: 0 14px 28px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Convidar pessoa</button>
+              </sc-if>
+            </div>
+            <div style="padding: 0 30px 12px 30px; display: flex; flex-direction: column">
+              <sc-for list="{{ team }}" as="p" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 0; border-top: 1px solid #f1f5f9; flex-wrap: wrap">
+                  <div style="display: flex; align-items: center; gap: 13px; min-width: 0">
+                    <span style="width: 40px; height: 40px; border-radius: 999px; background: {{ accentSoft }}; display: flex; align-items: center; justify-content: center; flex: none; font-size: 12px; font-weight: 600; color: {{ accentHover }}">{{ p.initials }}</span>
+                    <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+                      <span style="font-size: 13.5px; font-weight: 500; color: #334155">{{ p.name }}</span>
+                      <span style="font-size: 11.5px; color: #94a3b8">{{ p.email }}</span>
+                    </div>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px">
+                    <span style="font-size: 11px; letter-spacing: 0.1em; font-weight: 600; color: {{ accent }}">{{ p.role }}</span>
+                    <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 5px 12px; background: {{ p.bg }}; color: {{ p.fg }}">
+                      <span style="width: 6px; height: 6px; border-radius: 50%; background: {{ p.fg }}"></span>{{ p.status }}
+                    </span>
+                    <button style="border: 1px solid #e2e8f0; background: #ffffff; color: #475569; border-radius: 999px; padding: 8px 15px; font-size: 12px" style-hover="border-color: #bfdbfe">Editar</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabIsImport }}" hint-placeholder-val="{{ false }}">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 22px; align-items: start">
+            <div style="background: #ffffff; border-radius: 24px; padding: 30px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 20px; min-width: 0">
+              <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Regras de importação</div>
+              <sc-for list="{{ toggles }}" as="tg" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 0; border-top: 1px solid #f1f5f9">
+                  <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+                    <span style="font-size: 13.5px; font-weight: 500; color: #334155">{{ tg.label }}</span>
+                    <span style="font-size: 11.5px; color: #94a3b8; line-height: 1.5">{{ tg.hint }}</span>
+                  </div>
+                  <button onClick="{{ tg.toggle }}" style="border: 0; background: {{ tg.trackBg }}; border-radius: 999px; width: 50px; height: 28px; padding: 3px; display: flex; justify-content: {{ tg.justify }}; flex: none; transition: background 0.2s ease">
+                    <span style="width: 22px; height: 22px; border-radius: 999px; background: #ffffff; box-shadow: 0 3px 8px rgba(2,6,23,0.18)"></span>
+                  </button>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background: #ffffff; border-radius: 24px; padding: 30px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 18px; min-width: 0">
+              <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Mapeamento de colunas</div>
+              <p style="margin: 0; font-size: 12.5px; line-height: 1.65; color: #64748b; text-wrap: pretty">Colunas reconhecidas automaticamente nos arquivos enviados. Nomes fora da lista vão para o relatório de erros sem interromper o job.</p>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <sc-for list="{{ columns }}" as="c" hint-placeholder-count="7">
+                  <span style="font-size: 11.5px; font-weight: 500; border-radius: 999px; padding: 7px 13px; background: #f8fafc; color: #475569">{{ c }}</span>
+                </sc-for>
+              </div>
+              <label style="display: flex; flex-direction: column; gap: 7px; margin-top: 4px">
+                <span style="font-size: 12px; color: #64748b">Delimitador padrão</span>
+                <div style="display: flex; gap: 8px">
+                  <sc-for list="{{ delimiters }}" as="d" hint-placeholder-count="3">
+                    <button onClick="{{ d.select }}" style="border: {{ d.border }}; background: {{ d.bg }}; color: {{ d.fg }}; border-radius: 999px; padding: 10px 18px; font-size: 12.5px; font-weight: 500">{{ d.label }}</button>
+                  </sc-for>
+                </div>
+              </label>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tabIsSeguranca }}" hint-placeholder-val="{{ false }}">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 22px; align-items: start">
+            <div style="background: #ffffff; border-radius: 24px; padding: 30px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 20px; min-width: 0">
+              <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Trocar senha</div>
+              <label style="display: flex; flex-direction: column; gap: 7px">
+                <span style="font-size: 12px; color: #64748b">Senha atual</span>
+                <input type="password" value="{{ s.oldPass }}" onChange="{{ setOldPass }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 7px">
+                <span style="font-size: 12px; color: #64748b">Nova senha</span>
+                <input type="password" value="{{ s.newPass }}" onChange="{{ setNewPass }}" style="border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #334155" style-focus="border-color: {{ accent }}; background: #ffffff" />
+                <div style="display: flex; align-items: center; gap: 10px; padding-top: 4px">
+                  <div style="display: flex; gap: 5px; flex: 1">
+                    <sc-for list="{{ secBars }}" as="c" hint-placeholder-count="4">
+                      <span style="height: 4px; flex: 1; border-radius: 999px; background: {{ c }}"></span>
+                    </sc-for>
+                  </div>
+                  <span style="font-size: 11px; font-weight: 600; color: {{ secFg }}; flex: none">{{ secLabel }}</span>
+                </div>
+                <span style="font-size: 11px; color: #94a3b8; line-height: 1.5">Mínimo de 8 caracteres, com maiúscula, número e símbolo — mesma regra do cadastro.</span>
+              </label>
+
+              <sc-if value="{{ hasPassMsg }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 11px; background: {{ passMsgBg }}; border-radius: 14px; padding: 12px 15px">
+                  <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ passMsgDot }}; flex: none"></span>
+                  <span style="font-size: 12.5px; line-height: 1.5; color: {{ passMsgFg }}">{{ passMsg }}</span>
+                </div>
+              </sc-if>
+
+              <button onClick="{{ submitPass }}" style="align-self: flex-start; border: 0; background: {{ passBtnBg }}; color: #ffffff; border-radius: 999px; padding: 12px 22px; font-size: 13px; font-weight: 500; box-shadow: 0 14px 28px {{ accentGlow }}">{{ passBtnLabel }}</button>
+            </div>
+
+            <div style="background: #ffffff; border-radius: 24px; padding: 30px; box-shadow: 0 24px 55px rgba(2,6,23,0.06); display: flex; flex-direction: column; gap: 16px; min-width: 0">
+              <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Sessões ativas</div>
+              <sc-for list="{{ sessions }}" as="ss" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 0; border-top: 1px solid #f1f5f9">
+                  <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+                    <span style="width: 32px; height: 32px; border-radius: 999px; background: {{ ss.bg }}; display: flex; align-items: center; justify-content: center; flex: none">
+                      <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ ss.fg }}"></span>
+                    </span>
+                    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                      <span style="font-size: 12.5px; color: {{ ss.nameFg }}">{{ ss.device }}</span>
+                      <span style="font-size: 11px; color: #94a3b8">{{ ss.at }}</span>
+                    </div>
+                  </div>
+                  <button onClick="{{ ss.revoke }}" style="border: 1px solid {{ ss.btnBorder }}; background: #ffffff; color: {{ ss.btnFg }}; border-radius: 999px; padding: 7px 14px; font-size: 12px; flex: none">{{ ss.btnLabel }}</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ hasRevoked }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size: 11.5px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 14px">{{ revokedNote }}</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+      </main>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ askDiscard }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ backdropDiscard }}" style="position: fixed; inset: 0; z-index: 75; background: rgba(15,23,42,0.45); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px">
+    <div style="width: 100%; max-width: 430px; background: #ffffff; border-radius: 26px; padding: 32px; box-shadow: 0 40px 90px rgba(2,6,23,0.3); display: flex; flex-direction: column; gap: 18px">
+      <span style="width: 42px; height: 42px; border-radius: 999px; background: #fffbeb; display: flex; align-items: center; justify-content: center">
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: #b45309"></span>
+      </span>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 23px; letter-spacing: -0.02em; color: #334155; text-wrap: pretty">Descartar as alterações?</h2>
+        <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #64748b; text-wrap: pretty">Os campos voltam para os valores do último salvamento. O que foi digitado agora é perdido.</p>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <button onClick="{{ cancelDiscard }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 13px 24px; font-size: 13px; font-weight: 500; box-shadow: 0 14px 28px {{ accentGlow }}" style-hover="background: {{ accentHover }}">Continuar editando</button>
+        <button onClick="{{ confirmDiscard }}" style="border: 1px solid #fecaca; background: #ffffff; color: #b91c1c; border-radius: 999px; padding: 13px 24px; font-size: 13px; font-weight: 500">Descartar e reverter</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ planModal }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ backdropClosePlan }}" style="position: fixed; inset: 0; z-index: 70; background: rgba(15,23,42,0.45); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px">
+    <div style="width: 100%; max-width: 480px; background: #ffffff; border-radius: 26px; padding: 32px; box-shadow: 0 40px 90px rgba(2,6,23,0.3); display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: {{ accent }}; font-weight: 600">Assinatura</div>
+        <h2 style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-weight: 700; font-size: 25px; letter-spacing: -0.02em; color: #334155">Trocar de plano</h2>
+        <p style="margin: 0; font-size: 12.5px; line-height: 1.6; color: #64748b">A diferença é cobrada proporcionalmente no próximo ciclo, em 12/09.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <sc-for list="{{ planOptions }}" as="po" hint-placeholder-count="3">
+          <button onClick="{{ po.select }}" style="border: 1px solid {{ po.border }}; background: #ffffff; border-radius: 18px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; text-align: left" style-hover="border-color: {{ accent }}">
+            <span style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid {{ po.ring }}; display: flex; align-items: center; justify-content: center; flex: none">
+              <span style="width: 9px; height: 9px; border-radius: 999px; background: {{ po.dot }}"></span>
+            </span>
+            <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1">
+              <div style="display: flex; align-items: center; gap: 8px">
+                <span style="font-size: 13.5px; font-weight: 600; color: #334155">{{ po.name }}</span>
+                <sc-if value="{{ po.tagShown }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size: 10px; font-weight: 600; border-radius: 999px; padding: 3px 9px; background: {{ accentSoft }}; color: {{ accentHover }}">{{ po.tag }}</span>
+                </sc-if>
+              </div>
+              <span style="font-size: 11.5px; color: #94a3b8">{{ po.hint }}</span>
+            </div>
+            <span style="font-size: 13px; font-weight: 600; color: #334155; flex: none">{{ po.price }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <button onClick="{{ confirmPlan }}" style="border: 0; background: {{ accent }}; color: #ffffff; border-radius: 999px; padding: 13px 24px; font-size: 13px; font-weight: 500; box-shadow: 0 14px 28px {{ accentGlow }}">{{ planBusyLabel }}</button>
+        <button onClick="{{ closePlan }}" style="border: 1px solid #e2e8f0; background: #ffffff; color: #475569; border-radius: 999px; padding: 13px 24px; font-size: 13px; font-weight: 500">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;userName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Helena Braga&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;userRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ADMIN&quot;,&quot;VENDEDOR&quot;,&quot;PDV&quot;,&quot;CAIXA&quot;],&quot;default&quot;:&quot;ADMIN&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#2563eb&quot;,&quot;options&quot;:[&quot;#2563eb&quot;,&quot;#0ea5e9&quot;,&quot;#4f46e5&quot;,&quot;#0f766e&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = {
+    screen: "login",
+    showPass: false,
+    busy: false,
+    planModal: false,
+    askDiscard: false,
+    planPick: "Profissional",
+    planBusy: false,
+    passBusy: false,
+    passMsg: null,
+    revoked: [],
+    revoking: null,
+    authError: "",
+    recoverSent: false,
+    signupRole: "Admin",
+    tab: "Geral",
+    dirty: false,
+    saved: false,
+    auth: { name: "", store: "", email: "", pass: "" },
+    settings: {
+      store: "Restaurante Aurora Ltda", cnpj: "12.345.678/0001-90",
+      email: "contato@aurora.com.br", phone: "(11) 3555-0142",
+      service: "10", oldPass: "", newPass: "",
+      services: ["Salão", "Delivery"], delimiter: "Vírgula (,)",
+      rules: { upsert: true, notify: true, dryRun: false, autoPublish: false }
+    }
+  };
+
+  /* Snapshot do último estado salvo — Descartar volta para cá, e não só
+     limpa a flag (antes o valor sujo continuava no campo). */
+  saved_settings = null;
+
+  pristine() {
+    if (!this.saved_settings) {
+      this.saved_settings = JSON.parse(JSON.stringify(this.state.settings));
+    }
+    return this.saved_settings;
+  }
+
+  initials(s) { return String(s || "").split(/[\s-]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase(); }
+
+  patch(part) {
+    this.pristine();
+    this.setState(s => ({ settings: { ...s.settings, ...part }, dirty: true, saved: false }));
+  }
+
+  componentDidMount() {
+    this._esc = e => {
+      if (e.key !== "Escape") return;
+      if (this.state.askDiscard) return this.setState({ askDiscard: false });
+      if (this.state.planModal && !this.state.planBusy) this.setState({ planModal: false });
+    };
+    document.addEventListener("keydown", this._esc);
+  }
+  componentWillUnmount() {
+    document.removeEventListener("keydown", this._esc);
+  }
+  renderVals() {
+    const p = this.props;
+    const accent = p.accentColor ?? "#2563eb";
+    const mix = (pct, other) => "color-mix(in oklab, " + accent + " " + pct + "%, " + other + ")";
+    const accentHover = mix(85, "#0f172a");
+    const accentSoft = mix(11, "#ffffff");
+    const accentGlow = "color-mix(in oklab, " + accent + " 32%, transparent)";
+    const accentOnDark = mix(70, "#ffffff");
+
+    const st = { ok: { bg: "#f0fdf4", fg: "#15803d" }, warn: { bg: "#fffbeb", fg: "#b45309" }, bad: { bg: "#fef2f2", fg: "#b91c1c" }, info: { bg: accentSoft, fg: accentHover } };
+    const chip = (label, on) => ({
+      label,
+      border: on ? "1px solid " + accent : "1px solid #e2e8f0",
+      bg: on ? accentSoft : "#ffffff",
+      fg: on ? accentHover : "#475569"
+    });
+
+    const screen = this.state.screen;
+    const isLogin = screen === "login";
+    const isSignup = screen === "signup";
+    const isRecover = screen === "recover";
+    const role = p.userRole ?? "ADMIN";
+    const perms = (typeof window !== "undefined" && window.AuroraPerms) || null;
+    const isAdmin = perms ? perms.can(role, "conta.encerrar") : true;
+    const a = this.state.auth;
+    const s = this.state.settings;
+
+    const pass = a.pass;
+    const score = (pass.length >= 8 ? 1 : 0) + (/[A-Z]/.test(pass) ? 1 : 0) + (/\d/.test(pass) ? 1 : 0) + (/[^A-Za-z0-9]/.test(pass) ? 1 : 0);
+    const np = s.newPass || "";
+    const secScore = (np.length >= 8 ? 1 : 0) + (/[A-Z]/.test(np) ? 1 : 0) + (/\d/.test(np) ? 1 : 0) + (/[^A-Za-z0-9]/.test(np) ? 1 : 0);
+    const strengthColors = ["#e2e8f0", "#b91c1c", "#b45309", accent, "#15803d"];
+    const strengthText = ["Digite uma senha", "Fraca", "Razoável", "Boa", "Forte"];
+
+    const shapes = {
+      round: { iconRadius: "999px", iconRotate: "none" },
+      square: { iconRadius: "2px", iconRotate: "none" },
+      diamond: { iconRadius: "2px", iconRotate: "rotate(45deg)" }
+    };
+    const items = [
+      { id: "dashboard", label: "Dashboard", shape: "square" },
+      { id: "pedidos", label: "Pedidos", shape: "round", badge: "16" },
+      { id: "pdv", label: "PDV · Mesas", shape: "diamond", badge: "6/14" },
+      { id: "produtos", label: "Produtos", shape: "square", badge: "18" },
+      { id: "importacao", label: "Importação", shape: "diamond", badge: "2" },
+      { id: "caixa", label: "Caixa", shape: "round" },
+      { id: "configuracoes", label: "Configurações", shape: "square" }
+    ];
+    const nav = items.filter(it => (perms ? perms.canAccess(role, it.id) : true)).map(it => {
+      const active = it.id === "configuracoes";
+      return {
+        ...it, ...shapes[it.shape], active,
+        fg: active ? "#ffffff" : "inherit",
+        iconBg: active ? "rgba(255,255,255,0.22)" : "rgba(148,163,184,0.16)",
+        iconFg: active ? "#ffffff" : "#94a3b8",
+        badge: it.badge || null,
+        badgeBg: active ? "rgba(255,255,255,0.22)" : "rgba(148,163,184,0.16)",
+        badgeFg: active ? "#ffffff" : "#94a3b8",
+        select: () => {}
+      };
+    });
+
+    const team = [
+      { name: "Helena Braga", email: "helena@aurora.com.br", role: "ADMIN", status: "Ativo", ...st.ok },
+      { name: "Bruno Ferraz", email: "bruno@aurora.com.br", role: "PDV", status: "Ativo", ...st.ok },
+      { name: "Larissa Prado", email: "larissa@aurora.com.br", role: "CAIXA", status: "Ativo", ...st.ok },
+      { name: "Kaio Nunes", email: "kaio@aurora.com.br", role: "VENDEDOR", status: "Convite pendente", ...st.warn }
+    ].map(t => ({ ...t, initials: this.initials(t.name) }));
+
+    const ruleDefs = [
+      { key: "upsert", label: "Atualizar em vez de duplicar", hint: "Reimportar o mesmo SKU sobrescreve o produto existente." },
+      { key: "notify", label: "Avisar ao concluir", hint: "E-mail para o responsável quando o job termina." },
+      { key: "dryRun", label: "Simulação antes de aplicar", hint: "Processa o arquivo e mostra o resultado sem gravar." },
+      { key: "autoPublish", label: "Publicar na vitrine automaticamente", hint: "Produtos importados entram como Ativo na loja pública." }
+    ];
+    const toggles = ruleDefs.map(r => {
+      const on = !!s.rules[r.key];
+      return {
+        ...r,
+        trackBg: on ? accent : "#e2e8f0",
+        justify: on ? "flex-end" : "flex-start",
+        toggle: () => this.patch({ rules: { ...s.rules, [r.key]: !on } })
+      };
+    });
+
+    const tabs = ["Geral", "Equipe", "Importação", "Segurança"].map(t => ({
+      ...chip(t, this.state.tab === t),
+      select: () => this.setState({ tab: t })
+    }));
+
+    const userName = p.userName ?? "Helena Braga";
+
+    return {
+      accent, accentHover, accentSoft, accentGlow, accentOnDark,
+      isAuth: isLogin || isSignup || isRecover, isApp: screen === "app",
+      isLogin, isSignup, isRecover, isAdmin,
+      showPassField: !isRecover,
+      authError: this.state.authError,
+      hasAuthError: !!this.state.authError,
+      recoverSent: this.state.recoverSent,
+
+      pitch: ["Importação de CSV com progresso ao vivo", "PDV de mesas pensado para toque", "Fechamento de caixa com conciliação"],
+      authEyebrow: isRecover ? "Recuperar acesso" : isSignup ? "Criar conta" : "Acesso da equipe",
+      authTitle: isRecover ? (this.state.recoverSent ? "Link enviado" : "Recuperar senha") : isSignup ? "Comece em minutos" : "Entrar no painel",
+      authLead: isRecover
+        ? (this.state.recoverSent
+            ? "Enviamos um link de redefinição para " + (a.email || "seu e-mail") + ". Ele expira em 30 minutos."
+            : "Informe o e-mail cadastrado e enviamos um link para você criar uma senha nova.")
+        : isSignup
+          ? "Crie a conta do estabelecimento e convide a equipe depois, em Configurações."
+          : "Use o e-mail cadastrado pelo administrador do estabelecimento.",
+      authCta: this.state.busy
+        ? (isSignup ? "Criando conta…" : isRecover ? "Enviando…" : "Entrando…")
+        : isRecover ? (this.state.recoverSent ? "Reenviar link" : "Enviar link") : isSignup ? "Criar conta" : "Entrar",
+      authAlt: isRecover ? "Voltar para o login" : isSignup ? "Já tenho conta — entrar" : "Criar uma conta nova",
+      authFootnote: isRecover
+        ? "Se o e-mail não chegar em alguns minutos, confira a caixa de spam."
+        : isSignup
+          ? "Ao criar a conta você concorda com os termos de uso e a política de privacidade."
+          : "Protótipo — senha de demonstração: aurora2026. Qualquer outra devolve erro de credencial.",
+      authBtnBg: this.state.busy ? accentHover : accent,
+      switchAuth: () => this.setState({ screen: isSignup || isRecover ? "login" : "signup", authError: "", recoverSent: false }),
+      goRecover: () => this.setState({ screen: "recover", authError: "", recoverSent: false }),
+      submitAuth: () => {
+        if (this.state.busy) return;
+        if (isRecover) {
+          if (!a.email.includes("@")) return this.setState({ authError: "Informe um e-mail válido." });
+          this.setState({ busy: true, authError: "" });
+          return setTimeout(() => this.setState({ busy: false, recoverSent: true }), 700);
+        }
+        if (isSignup) {
+          if (!a.name.trim() || !a.store.trim()) return this.setState({ authError: "Informe seu nome e o nome do estabelecimento." });
+          if (!a.email.includes("@")) return this.setState({ authError: "Informe um e-mail de trabalho válido." });
+          if (a.pass.length < 8) return this.setState({ authError: "A senha precisa ter pelo menos 8 caracteres." });
+          this.setState({ busy: true, authError: "" });
+          return setTimeout(() => this.setState({ busy: false, screen: "app", tab: "Geral" }), 700);
+        }
+        if (!a.email.includes("@") || !a.pass) {
+          return this.setState({ authError: "Informe e-mail e senha para entrar." });
+        }
+        // credencial simulada até o backend responder 401 de verdade
+        this.setState({ busy: true, authError: "" });
+        setTimeout(() => {
+          if (a.pass !== "aurora2026") {
+            return this.setState({ busy: false, authError: "E-mail ou senha incorretos. Tente novamente." });
+          }
+          this.setState({ busy: false, screen: "app", tab: "Geral" });
+        }, 700);
+      },
+
+      fName: a.name, fStore: a.store, fEmail: a.email, fPass: a.pass,
+      setFName: e => this.setState({ auth: { ...a, name: e.target.value } }),
+      setFStore: e => this.setState({ auth: { ...a, store: e.target.value } }),
+      setFEmail: e => this.setState({ auth: { ...a, email: e.target.value } }),
+      setFPass: e => this.setState({ auth: { ...a, pass: e.target.value } }),
+      emailBorder: a.email && !a.email.includes("@") ? "#fecaca" : "#e2e8f0",
+      passType: this.state.showPass ? "text" : "password",
+      passToggleLabel: this.state.showPass ? "Ocultar" : "Mostrar",
+      togglePass: () => this.setState(x => ({ showPass: !x.showPass })),
+      strengthBars: [0, 1, 2, 3].map(i => (i < score ? strengthColors[score] : "#e2e8f0")),
+      strengthLabel: strengthText[score],
+      strengthFg: score >= 3 ? "#15803d" : score === 0 ? "#94a3b8" : "#b45309",
+      roleChips: ["Admin", "Vendedor", "PDV", "Caixa"].map(r => ({
+        ...chip(r, this.state.signupRole === r),
+        select: () => this.setState({ signupRole: r })
+      })),
+
+      nav, tabs, team, toggles,
+      tabIsGeral: this.state.tab === "Geral",
+      tabIsEquipe: this.state.tab === "Equipe",
+      tabIsImport: this.state.tab === "Importação",
+      tabIsSeguranca: this.state.tab === "Segurança",
+
+      s,
+      setStore: e => this.patch({ store: e.target.value }),
+      setCnpj: e => this.patch({ cnpj: e.target.value }),
+      setEmail: e => this.patch({ email: e.target.value }),
+      setPhone: e => this.patch({ phone: e.target.value }),
+      setService: e => this.patch({ service: e.target.value.replace(/[^\d.,]/g, "") }),
+      setOldPass: e => this.patch({ oldPass: e.target.value }),
+      setNewPass: e => this.patch({ newPass: e.target.value }),
+      serviceChips: ["Salão", "Delivery", "Retirada"].map(c => ({
+        ...chip(c, s.services.includes(c)),
+        select: () => this.patch({ services: s.services.includes(c) ? s.services.filter(x => x !== c) : [...s.services, c] })
+      })),
+      delimiters: ["Vírgula (,)", "Ponto e vírgula (;)", "Tabulação"].map(d => ({
+        ...chip(d, s.delimiter === d),
+        select: () => this.patch({ delimiter: d })
+      })),
+      columns: ["sku", "nome", "preco", "estoque", "categoria", "codigo_barras", "unidade"],
+      planLines: [
+        { k: "Ciclo", v: "Mensal · renova 12/09" },
+        { k: "Terminais PDV", v: "3 de 5 em uso" },
+        { k: "Importações no mês", v: "12 de 100" }
+      ],
+      sessions: [
+        { id: "s1", device: "Chrome · MacBook Pro", at: "Agora · São Paulo", current: true, ...st.ok },
+        { id: "s2", device: "PDV-01 · terminal do salão", at: "Ativa desde 17:00", current: false, ...st.info },
+        { id: "s3", device: "Safari · iPhone", at: "Ontem, 22:14", current: false, ...st.warn },
+        { id: "s4", device: "Edge · Windows do escritório", at: "21/08, 09:40", current: false, ...st.warn }
+      ].map(x => {
+        const gone = this.state.revoked.includes(x.id);
+        const busy = this.state.revoking === x.id;
+        return {
+          ...x,
+          bg: gone ? "#f1f5f9" : x.bg,
+          fg: gone ? "#94a3b8" : x.fg,
+          device: gone ? x.device : x.device,
+          at: gone ? "Sessão encerrada agora" : x.at,
+          nameFg: gone ? "#94a3b8" : "#334155",
+          btnLabel: x.current ? "Esta sessão" : gone ? "Encerrada" : busy ? "Encerrando…" : "Encerrar",
+          btnFg: gone || x.current ? "#94a3b8" : "#b91c1c",
+          btnBorder: gone || x.current ? "#f1f5f9" : "#fecaca",
+          revoke: () => {
+            if (x.current || gone || busy) return;
+            this.setState({ revoking: x.id });
+            setTimeout(() => this.setState(st2 => ({ revoking: null, revoked: [...st2.revoked, x.id] })), 700);
+          }
+        };
+      }),
+      revokedCount: this.state.revoked.length,
+      hasRevoked: this.state.revoked.length > 0,
+      revokedNote: this.state.revoked.length === 1
+        ? "1 sessão encerrada nesta visita."
+        : this.state.revoked.length + " sessões encerradas nesta visita.",
+
+      secBars: [0, 1, 2, 3].map(i => (i < secScore ? strengthColors[secScore] : "#e2e8f0")),
+      secLabel: strengthText[secScore],
+      secFg: secScore >= 3 ? "#15803d" : secScore === 0 ? "#94a3b8" : "#b45309",
+      passBtnLabel: this.state.passBusy ? "Atualizando…" : "Atualizar senha",
+      passBtnBg: this.state.passBusy ? accentHover : accent,
+      passMsg: this.state.passMsg ? this.state.passMsg.text : "",
+      hasPassMsg: !!this.state.passMsg,
+      passMsgBg: this.state.passMsg && this.state.passMsg.ok ? "#f0fdf4" : "#fef2f2",
+      passMsgFg: this.state.passMsg && this.state.passMsg.ok ? "#15803d" : "#b91c1c",
+      passMsgDot: this.state.passMsg && this.state.passMsg.ok ? "#15803d" : "#b91c1c",
+      submitPass: () => {
+        if (this.state.passBusy) return;
+        if (!s.oldPass) return this.setState({ passMsg: { ok: false, text: "Informe a senha atual." } });
+        if (s.oldPass !== "aurora2026") return this.setState({ passMsg: { ok: false, text: "A senha atual está incorreta." } });
+        if (s.newPass.length < 8) return this.setState({ passMsg: { ok: false, text: "A nova senha precisa ter pelo menos 8 caracteres." } });
+        if (secScore < 3) return this.setState({ passMsg: { ok: false, text: "Senha fraca. Combine maiúsculas, números e um símbolo." } });
+        if (s.newPass === s.oldPass) return this.setState({ passMsg: { ok: false, text: "A nova senha precisa ser diferente da atual." } });
+        this.setState({ passBusy: true, passMsg: null });
+        setTimeout(() => {
+          this.setState({ passBusy: false, passMsg: { ok: true, text: "Senha atualizada. As outras sessões continuam ativas." } });
+          this.patch({ oldPass: "", newPass: "" });
+        }, 900);
+      },
+
+      planModal: this.state.planModal,
+      openPlan: () => this.setState({ planModal: true, planPick: "Profissional" }),
+      closePlan: () => this.setState({ planModal: false }),
+      backdropClosePlan: e => { if (e.target === e.currentTarget && !this.state.planBusy) this.setState({ planModal: false }); },
+      planBusyLabel: this.state.planBusy ? "Aplicando…" : "Confirmar plano",
+      confirmPlan: () => {
+        if (this.state.planBusy) return;
+        this.setState({ planBusy: true });
+        setTimeout(() => this.setState({ planBusy: false, planModal: false }), 800);
+      },
+      planOptions: [
+        { name: "Essencial", price: "R$ 149/mês", hint: "1 terminal PDV · 20 importações/mês" },
+        { name: "Profissional", price: "R$ 329/mês", hint: "5 terminais PDV · 100 importações/mês" },
+        { name: "Rede", price: "R$ 690/mês", hint: "Terminais ilimitados · multi-loja" }
+      ].map(o => {
+        const on = this.state.planPick === o.name;
+        const cur = o.name === "Profissional";
+        return {
+          ...o,
+          border: on ? accent : "#e2e8f0",
+          ring: on ? accent : "#cbd5e1",
+          dot: on ? accent : "transparent",
+          tag: cur ? "Plano atual" : "",
+          tagShown: cur,
+          select: () => this.setState({ planPick: o.name })
+        };
+      }),
+      dirty: this.state.dirty,
+      saveLabel: this.state.busy ? "Salvando…" : this.state.saved ? "Salvo" : "Salvar alterações",
+      save: () => {
+        if (this.state.busy) return;
+        this.setState({ busy: true });
+        setTimeout(() => this.setState(st => {
+          this.saved_settings = JSON.parse(JSON.stringify(st.settings));
+          return { busy: false, dirty: false, saved: true };
+        }), 700);
+      },
+      discard: () => { if (this.state.dirty) this.setState({ askDiscard: true }); },
+      askDiscard: this.state.askDiscard,
+      cancelDiscard: () => this.setState({ askDiscard: false }),
+      confirmDiscard: () => {
+        const base = this.pristine();
+        this.setState({ settings: JSON.parse(JSON.stringify(base)), dirty: false, saved: false, askDiscard: false, passMsg: null });
+      },
+      backdropDiscard: e => { if (e.target === e.currentTarget) this.setState({ askDiscard: false }); },
+      logout: () => {
+        const base = this.pristine();
+        this.setState({
+          screen: "login", tab: "Geral", dirty: false, saved: false, askDiscard: false,
+          planModal: false, passMsg: null, revoked: [], revoking: null,
+          settings: JSON.parse(JSON.stringify(base)),
+          auth: { name: "", store: "", email: "", pass: "" }
+        });
+      },
+
+      userName,
+      userRole: p.userRole ?? "ADMIN",
+      initials: this.initials(userName)
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -10,6 +10,8 @@ public interface CartService {
 
     CartResponse updateQuantity(String customerId, String productId, Integer quantity);
 
+    CartResponse updateDelivery(String customerId, String address, String shippingMethod, String paymentMethod);
+
     CartResponse getCart(String customerId);
 
     void clearCart(String customerId);

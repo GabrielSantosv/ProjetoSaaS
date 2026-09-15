@@ -70,6 +70,15 @@ public class ProductImportService {
         }
     }
 
+    public org.springframework.data.domain.Page<ImportJob> getImportJobs(org.springframework.data.domain.Pageable pageable) {
+        return importJobRepository.findAll(pageable);
+    }
+
+    public org.springframework.data.domain.Page<ImportJobError> getImportErrors(String jobId, org.springframework.data.domain.Pageable pageable) {
+        getImportStatus(jobId); // 404 honesto se o job não existir (ou não pertencer ao tenant atual)
+        return importJobErrorRepository.findByJob_Id(jobId, pageable);
+    }
+
     public ImportJob getImportStatus(String jobId) {
         return importJobRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job de importação não encontrado: " + jobId));
@@ -162,6 +171,22 @@ public class ProductImportService {
             job.setErrorCount(errorTotal);
             job.setStatus(finalStatus);
             job.setMessage(message);
+            importJobRepository.save(job);
+        } catch (Exception ex) {
+            // Sem isso, uma falha antes do processamento por chunk (arquivo não encontrado,
+            // CSV corrompido, etc.) deixava o job preso em PROCESSING pra sempre — nenhum
+            // outro código path move pra um estado terminal nesse caso, e quem fica fazendo
+            // polling nunca para.
+            String failMessage = "Falha ao processar o arquivo: " + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
+            if (failMessage.length() > 1000) {
+                failMessage = failMessage.substring(0, 1000);
+            }
+            // Precisa atualizar a entidade "job" em memória também, não só a query bulk:
+            // ela já foi save() com status PROCESSING antes da exceção, e continua "suja"
+            // no contexto de persistência — o flush automático do Hibernate no commit
+            // reescreveria por cima da query bulk, revertendo pra PROCESSING de novo.
+            job.setStatus(ImportJobStatus.FAILED);
+            job.setMessage(failMessage);
             importJobRepository.save(job);
         } finally {
             TenantContext.clear();
@@ -273,16 +298,26 @@ public class ProductImportService {
 
     private record ProductImportLine(String id, String tenantId, String sku, String name, BigDecimal price, int stockQuantity, long lineNumber) {}
 
+    private static final int ERROR_MESSAGE_MAX_LENGTH = 500;
+
     private void saveError(ImportJob job, long rowNumber, String message) {
         TenantContext.setTenantId(job.getTenantId());
         try {
+            String safeMessage = message == null ? "Erro desconhecido" : message;
+            // error_message é VARCHAR(500) — mensagens de exceção JDBC podem incluir o SQL
+            // inteiro e passar disso, o que já derrubou este método com uma segunda
+            // exceção (a própria gravação do erro estourando a coluna).
+            if (safeMessage.length() > ERROR_MESSAGE_MAX_LENGTH) {
+                safeMessage = safeMessage.substring(0, ERROR_MESSAGE_MAX_LENGTH);
+            }
+
             jdbcTemplate.update(
                     "INSERT INTO import_job_errors (id, tenant_id, import_job_id, row_num, error_message, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                     UUID.randomUUID().toString(),
                     job.getTenantId(),
                     job.getId(),
                     rowNumber,
-                    message == null ? "Erro desconhecido" : message
+                    safeMessage
             );
         } finally {
             TenantContext.clear();

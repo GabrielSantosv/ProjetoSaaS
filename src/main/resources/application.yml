@@ -56,6 +56,12 @@ security:
     secret-key: ${JWT_SECRET:8f4c2e9b1a7d5f3c6e0b4a8d2f5e7a9c1b3d5e7f9a2b4c6e8d0f1a3b5c7e9d2f}
     expiration-ms: 86400000 # 24 horas
 
+# Storefront público (sem JWT): tenant fixo servido nas rotas /api/v1/storefront/**.
+# OBRIGATÓRIO em produção/homologação — sem essa propriedade o storefront responde 503
+# em vez de cair silenciosamente em um tenant indevido.
+storefront:
+  tenant-id: ${STOREFRONT_TENANT_ID:}
+
 # Swagger / OpenAPI
 springdoc:
   api-docs:

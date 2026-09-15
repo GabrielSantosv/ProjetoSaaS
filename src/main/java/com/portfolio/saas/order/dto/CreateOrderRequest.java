@@ -16,5 +16,13 @@ public record CreateOrderRequest(
 
         @NotNull(message = "O pedido deve conter itens")
         @Valid
-        List<OrderItemRequest> items
-) {}
+        List<OrderItemRequest> items,
+
+        String deliveryAddress,
+
+        String paymentMethod
+) {
+    public CreateOrderRequest(String customerId, OrderChannel channel, List<OrderItemRequest> items) {
+        this(customerId, channel, items, null, null);
+    }
+}

@@ -51,4 +51,32 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Page<Order> findByChannelAndStatus(OrderChannel channel, OrderStatus status, Pageable pageable);
 
     Page<Order> findByCustomerId(String customerId, Pageable pageable);
+
+    /**
+     * Contagem de pedidos "de venda efetiva" no período — mesma lista de status
+     * usada em faturamento, para que ticketMedio (faturamento / pedidos) permaneça
+     * coerente (ver ReportServiceImpl).
+     */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.status IN :statuses AND o.createdAt >= :from AND o.createdAt < :to")
+    long countInRangeByStatuses(
+            @Param("statuses") List<OrderStatus> statuses,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to
+    );
+
+    /**
+     * Um customerId de e-commerce conta como "novo cliente" no período quando o
+     * seu pedido mais antigo (em qualquer status, qualquer período) caiu dentro
+     * da janela consultada — não confundir com "todo pedido no período veio de
+     * um cliente novo". Não considera customerId de canal PDV: são espaços de
+     * identificador conceitualmente diferentes (PDV gera um customerId sintético
+     * por mesa, não por pessoa/navegador — ver PdvTableService.buildCustomerId).
+     */
+    @Query("SELECT o.customerId FROM Order o WHERE o.channel = com.portfolio.saas.order.OrderChannel.ECOMMERCE " +
+            "GROUP BY o.customerId " +
+            "HAVING MIN(o.createdAt) >= :from AND MIN(o.createdAt) < :to")
+    List<String> findNewEcommerceCustomerIdsInRange(
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to
+    );
 }

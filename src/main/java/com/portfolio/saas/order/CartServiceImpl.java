@@ -11,10 +11,14 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class CartServiceImpl implements CartService {
+
+    private static final Set<String> VALID_SHIPPING_METHODS = Set.of("DELIVERY", "PICKUP");
+    private static final Set<String> VALID_PAYMENT_METHODS = Set.of("PIX", "CREDIT_CARD", "ON_DELIVERY");
 
     /**
      * Limitação conhecida do estágio atual: o carrinho é in-memory e não sobrevive a reinício,
@@ -23,6 +27,7 @@ public class CartServiceImpl implements CartService {
      */
     private final ProductService productService;
     private final Map<String, Map<String, CartLine>> carts = new ConcurrentHashMap<>();
+    private final Map<String, CartMeta> deliveryMeta = new ConcurrentHashMap<>();
 
     public CartServiceImpl(ProductService productService) {
         this.productService = productService;
@@ -93,6 +98,27 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    public CartResponse updateDelivery(String customerId, String address, String shippingMethod, String paymentMethod) {
+        if (customerId == null || customerId.isBlank()) {
+            throw new BusinessException("O identificador do cliente é obrigatório.");
+        }
+        if (shippingMethod == null || !VALID_SHIPPING_METHODS.contains(shippingMethod)) {
+            throw new BusinessException("Forma de entrega inválida.");
+        }
+        if (paymentMethod == null || !VALID_PAYMENT_METHODS.contains(paymentMethod)) {
+            throw new BusinessException("Forma de pagamento inválida.");
+        }
+        if ("DELIVERY".equals(shippingMethod) && (address == null || address.isBlank())) {
+            throw new BusinessException("O endereço de entrega é obrigatório para este tipo de entrega.");
+        }
+
+        String normalizedAddress = "PICKUP".equals(shippingMethod) ? null : address;
+        deliveryMeta.put(customerId, new CartMeta(normalizedAddress, shippingMethod, paymentMethod));
+
+        return getCart(customerId);
+    }
+
+    @Override
     public CartResponse getCart(String customerId) {
         if (customerId == null || customerId.isBlank()) {
             throw new BusinessException("O identificador do cliente é obrigatório.");
@@ -106,6 +132,7 @@ public class CartServiceImpl implements CartService {
     public void clearCart(String customerId) {
         if (customerId != null && !customerId.isBlank()) {
             carts.remove(customerId);
+            deliveryMeta.remove(customerId);
         }
     }
 
@@ -133,8 +160,15 @@ public class CartServiceImpl implements CartService {
             items.add(new CartItemResponse(product.getId(), product.getName(), product.getPrice(), line.quantity, subtotal));
         }
 
-        return new CartResponse(customerId, items, total);
+        CartMeta meta = deliveryMeta.get(customerId);
+        String address = meta != null ? meta.address() : null;
+        String shippingMethod = meta != null ? meta.shippingMethod() : null;
+        String paymentMethod = meta != null ? meta.paymentMethod() : null;
+
+        return new CartResponse(customerId, items, total, address, shippingMethod, paymentMethod);
     }
+
+    private record CartMeta(String address, String shippingMethod, String paymentMethod) {}
 
     private static final class CartLine {
         private final String productId;

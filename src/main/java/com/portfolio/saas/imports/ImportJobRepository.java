@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+
 public interface ImportJobRepository extends JpaRepository<ImportJob, String> {
 
     @Modifying
@@ -25,4 +27,12 @@ public interface ImportJobRepository extends JpaRepository<ImportJob, String> {
     @Modifying
     @Query("UPDATE ImportJob job SET job.status = :status, job.message = :message WHERE job.id = :jobId")
     int markStatus(@Param("jobId") String jobId, @Param("status") ImportJobStatus status, @Param("message") String message);
+
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime from, LocalDateTime to);
+
+    @Query("SELECT COALESCE(SUM(job.successCount), 0) FROM ImportJob job WHERE job.createdAt >= :from AND job.createdAt < :to")
+    long sumSuccessCountInRange(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("SELECT COALESCE(SUM(job.errorCount), 0) FROM ImportJob job WHERE job.createdAt >= :from AND job.createdAt < :to")
+    long sumErrorCountInRange(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

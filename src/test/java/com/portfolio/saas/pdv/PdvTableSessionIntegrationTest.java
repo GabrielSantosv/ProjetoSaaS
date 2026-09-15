@@ -1,6 +1,9 @@
 package com.portfolio.saas.pdv;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.portfolio.saas.auth.Role;
+import com.portfolio.saas.auth.User;
+import com.portfolio.saas.auth.UserRepository;
 import com.portfolio.saas.auth.dto.RegisterTenantRequest;
 import com.portfolio.saas.catalog.Product;
 import com.portfolio.saas.catalog.ProductRepository;
@@ -21,6 +24,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -62,6 +66,12 @@ class PdvTableSessionIntegrationTest {
 
     @Autowired
     private TenantRepository tenantRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @AfterEach
     void tearDown() {
@@ -284,6 +294,145 @@ class PdvTableSessionIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deve permitir reabrir uma mesa com o mesmo número após ela ter sido fechada, sem herdar itens da comanda anterior")
+    void shouldAllowReopeningTableWithSameNumberAfterItWasClosed() throws Exception {
+        String token = registerAndGetToken("Giro de Mesas", "77777777000177", "admin@girodemesas.com");
+
+        MvcResult categoryResult = mockMvc.perform(post("/api/v1/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CategoryRequest("Categoria Giro", "teste"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String categoryId = objectMapper.readTree(categoryResult.getResponse().getContentAsString()).get("id").asText();
+
+        MvcResult productResult = mockMvc.perform(post("/api/v1/products")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ProductRequest(
+                                "GIRO-01", "Produto Giro", new BigDecimal("15.00"), 10, categoryId))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String productId = objectMapper.readTree(productResult.getResponse().getContentAsString()).get("id").asText();
+
+        // Primeiro ciclo: abre a mesa 3, lança item, fecha a conta.
+        MvcResult firstOpen = mockMvc.perform(post("/api/v1/pdv/tables")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableNumber", "Mesa 3", "customerName", "Primeiro Cliente"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String firstTableId = objectMapper.readTree(firstOpen.getResponse().getContentAsString()).get("id").asText();
+
+        mockMvc.perform(post("/api/v1/pdv/tables/" + firstTableId + "/items")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("productId", productId, "quantity", 3))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/v1/pdv/tables/" + firstTableId + "/close")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+
+        // Segundo ciclo: mesmo número de mesa, giro normal de restaurante — não pode falhar
+        // dizendo "já existe uma mesa aberta" nem herdar os itens da comanda anterior.
+        MvcResult secondOpen = mockMvc.perform(post("/api/v1/pdv/tables")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableNumber", "Mesa 3", "customerName", "Segundo Cliente"))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("OPEN"))
+                .andExpect(jsonPath("$.customerName").value("Segundo Cliente"))
+                .andExpect(jsonPath("$.total").value(0))
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.orderId").doesNotExist())
+                .andReturn();
+        String secondTableId = objectMapper.readTree(secondOpen.getResponse().getContentAsString()).get("id").asText();
+
+        assertThat(secondTableId).isEqualTo(firstTableId);
+
+        Integer tableRowCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM restaurant_tables WHERE tenant_id = (SELECT tenant_id FROM users WHERE email = ?) AND number = 3",
+                Integer.class,
+                "admin@girodemesas.com"
+        );
+        assertThat(tableRowCount).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Deve aplicar dois addItem concorrentes do mesmo produto na mesma mesa sem perder clique nem duplicar linha")
+    void shouldApplyConcurrentAddItemOfSameProductWithoutLosingClicksOrDuplicatingRow() throws Exception {
+        Tenant tenant = tenantRepository.save(new Tenant(null, "Tenant Concorrência Item", "88888888000188", "PRO", true));
+        TenantContext.setTenantId(tenant.getId());
+
+        Product product = productRepository.save(new Product(
+                "PDV-CONC-ITEM-01",
+                "Produto Item Concorrente",
+                new BigDecimal("10.00"),
+                50,
+                null
+        ));
+
+        PdvTableSessionResponse opened = pdvTableService.openTable(new OpenTableRequest("Mesa 21", "Diagnostico"));
+        String tableId = opened.id();
+
+        int threads = 2;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Object>> futures = new ArrayList<>();
+
+        for (int i = 0; i < threads; i++) {
+            futures.add(executor.submit(() -> {
+                TenantContext.setTenantId(tenant.getId());
+                try {
+                    ready.countDown();
+                    start.await();
+                    return pdvTableService.addItem(tableId, new AddTableItemRequest(product.getId(), 1));
+                } catch (Exception ex) {
+                    return ex;
+                } finally {
+                    TenantContext.clear();
+                }
+            }));
+        }
+
+        ready.await();
+        start.countDown();
+
+        int successes = 0;
+        List<Exception> failures = new ArrayList<>();
+        for (Future<Object> future : futures) {
+            Object result = future.get();
+            if (result instanceof Exception ex) {
+                failures.add(ex);
+            } else {
+                successes++;
+            }
+        }
+        executor.shutdown();
+
+        assertThat(failures).isEmpty();
+        assertThat(successes).isEqualTo(2);
+
+        Integer rowCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM restaurant_table_items WHERE restaurant_table_id = ? AND product_id = ?",
+                Integer.class,
+                tableId,
+                product.getId()
+        );
+        assertThat(rowCount).isEqualTo(1);
+
+        Integer finalQuantity = jdbcTemplate.queryForObject(
+                "SELECT quantity FROM restaurant_table_items WHERE restaurant_table_id = ? AND product_id = ?",
+                Integer.class,
+                tableId,
+                product.getId()
+        );
+        assertThat(finalQuantity).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("Deve bloquear adição de item a comanda quando o estoque for insuficiente")
     void shouldRejectTableItemWhenStockIsInsufficient() throws Exception {
         String token = registerAndGetToken("Lanchonete Brasil", "44444444000104", "admin@lanchonete.com");
@@ -332,5 +481,100 @@ class PdvTableSessionIntegrationTest {
                         ))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Estoque insuficiente")));
+    }
+
+    @Test
+    @DisplayName("Deve permitir ADMIN/SELLER/USER nas ações do PDV e bloquear CASHIER com 403 nas quatro rotas")
+    void shouldEnforceRoleBasedAccessOnAllPdvEndpoints() throws Exception {
+        String adminToken = registerAndGetToken("RBAC Restaurante", "22222222000122", "admin@rbacrestaurante.com");
+
+        String tenantId = jdbcTemplate.queryForObject(
+                "SELECT tenant_id FROM users WHERE email = ?",
+                String.class,
+                "admin@rbacrestaurante.com"
+        );
+
+        TenantContext.setTenantId(tenantId);
+        try {
+            userRepository.save(new User("Garcom PDV", "garcom@rbacrestaurante.com",
+                    passwordEncoder.encode("senha123"), Role.ROLE_USER));
+            userRepository.save(new User("Operador Caixa", "caixa@rbacrestaurante.com",
+                    passwordEncoder.encode("senha123"), Role.ROLE_CASHIER));
+        } finally {
+            TenantContext.clear();
+        }
+
+        String userToken = loginAndGetToken("garcom@rbacrestaurante.com", "senha123");
+        String cashierToken = loginAndGetToken("caixa@rbacrestaurante.com", "senha123");
+
+        MvcResult categoryResult = mockMvc.perform(post("/api/v1/categories")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CategoryRequest("Bebidas RBAC", "Categoria de teste"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String categoryId = objectMapper.readTree(categoryResult.getResponse().getContentAsString()).get("id").asText();
+
+        MvcResult productResult = mockMvc.perform(post("/api/v1/products")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new ProductRequest(
+                                "RBAC-01", "Água mineral", new BigDecimal("6.00"), 10, categoryId))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String productId = objectMapper.readTree(productResult.getResponse().getContentAsString()).get("id").asText();
+
+        // GET /tables: CASHIER bloqueado, USER permitido
+        mockMvc.perform(get("/api/v1/pdv/tables").header("Authorization", "Bearer " + cashierToken))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/pdv/tables").header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk());
+
+        // POST /tables (abrir mesa): CASHIER bloqueado, USER permitido
+        mockMvc.perform(post("/api/v1/pdv/tables")
+                        .header("Authorization", "Bearer " + cashierToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableNumber", "Mesa 20", "customerName", "Cliente RBAC"))))
+                .andExpect(status().isForbidden());
+
+        MvcResult openResult = mockMvc.perform(post("/api/v1/pdv/tables")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("tableNumber", "Mesa 20", "customerName", "Cliente RBAC"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String tableId = objectMapper.readTree(openResult.getResponse().getContentAsString()).get("id").asText();
+
+        // POST /tables/{id}/items: CASHIER bloqueado, USER permitido
+        mockMvc.perform(post("/api/v1/pdv/tables/" + tableId + "/items")
+                        .header("Authorization", "Bearer " + cashierToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("productId", productId, "quantity", 1))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/v1/pdv/tables/" + tableId + "/items")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("productId", productId, "quantity", 1))))
+                .andExpect(status().isCreated());
+
+        // POST /tables/{id}/close: CASHIER bloqueado (mesa continua aberta), USER permitido
+        mockMvc.perform(post("/api/v1/pdv/tables/" + tableId + "/close")
+                        .header("Authorization", "Bearer " + cashierToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/v1/pdv/tables/" + tableId + "/close")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"));
+    }
+
+    private String loginAndGetToken(String email, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "password", password))))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).get("accessToken").asText();
     }
 }

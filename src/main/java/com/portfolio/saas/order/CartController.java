@@ -1,5 +1,6 @@
 package com.portfolio.saas.order;
 
+import com.portfolio.saas.order.dto.CartDeliveryRequest;
 import com.portfolio.saas.order.dto.CartResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -61,5 +62,11 @@ public class CartController {
     public ResponseEntity<Void> clearCart(@PathVariable String customerId) {
         cartService.clearCart(customerId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/cart/{customerId}/delivery")
+    @Operation(summary = "Definir entrega e pagamento", description = "Registra endereço de entrega, forma de entrega e forma de pagamento do carrinho antes do checkout")
+    public ResponseEntity<CartResponse> updateDelivery(@PathVariable String customerId, @Valid @RequestBody CartDeliveryRequest request) {
+        return ResponseEntity.ok(cartService.updateDelivery(customerId, request.address(), request.shippingMethod(), request.paymentMethod()));
     }
 }

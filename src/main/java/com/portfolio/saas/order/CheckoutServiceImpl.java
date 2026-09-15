@@ -32,12 +32,23 @@ public class CheckoutServiceImpl implements CheckoutService {
         if (cart.items() == null || cart.items().isEmpty()) {
             throw new BusinessException("O carrinho do cliente está vazio.");
         }
+        if (cart.shippingMethod() == null || cart.shippingMethod().isBlank()) {
+            throw new BusinessException("Escolha uma forma de entrega antes de finalizar a compra.");
+        }
+        if (cart.paymentMethod() == null || cart.paymentMethod().isBlank()) {
+            throw new BusinessException("Escolha uma forma de pagamento antes de finalizar a compra.");
+        }
+        if ("DELIVERY".equals(cart.shippingMethod()) && (cart.deliveryAddress() == null || cart.deliveryAddress().isBlank())) {
+            throw new BusinessException("Informe o endereço de entrega antes de finalizar a compra.");
+        }
 
         List<OrderItemRequest> items = cart.items().stream()
                 .map(item -> new OrderItemRequest(item.productId(), item.quantity()))
                 .toList();
 
-        OrderResponse created = orderService.createOrder(new CreateOrderRequest(customerId, OrderChannel.ECOMMERCE, items));
+        OrderResponse created = orderService.createOrder(new CreateOrderRequest(
+                customerId, OrderChannel.ECOMMERCE, items, cart.deliveryAddress(), cart.paymentMethod()
+        ));
         cartService.clearCart(customerId);
         return created;
     }
